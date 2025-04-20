@@ -1,11 +1,12 @@
 import { nanoid } from 'nanoid';
 
 import type {
-    BaseComponent,
     CanvasComponentType,
     CanvasProperties,
     ComponentType,
+    RowComponentType,
 } from '@/types';
+import { emailStore } from '@/hooks';
 
 export class CanvasComponent implements CanvasComponentType {
     id: string = nanoid(8);
@@ -14,9 +15,9 @@ export class CanvasComponent implements CanvasComponentType {
 
     name: string = 'canvas';
 
-    parent: BaseComponent<CanvasProperties> | null = null;
+    parent: null = null;
 
-    children: BaseComponent<CanvasProperties>[] = [];
+    children: RowComponentType[] = [];
 
     properties: CanvasProperties = {
         backgroundColor: {
@@ -35,16 +36,15 @@ export class CanvasComponent implements CanvasComponentType {
         },
     };
 
-    addChild(child: BaseComponent<CanvasProperties>) {
+    addChild(child: RowComponentType) {
         child.parent = this;
         this.children.push(child);
+        emailStore.notification();
     }
 
-    removeChild(child: BaseComponent<CanvasProperties>) {
-        const index = this.children.indexOf(child);
-        if (index !== -1) {
-            child.parent = null;
-            this.children.splice(index, 1);
-        }
+    removeChild(child: RowComponentType) {
+        child.parent = null;
+        this.children = this.children.filter((c) => c.id !== child.id);
+        emailStore.notification();
     }
 }

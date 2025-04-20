@@ -1,5 +1,7 @@
-import type { BaseComponent, CanvasProperties } from '@/types';
+import type { CanvasComponentType } from '@/types';
+import { DropZone } from '@/components/dropzone';
 import { useEmail, useSettings } from '@/hooks';
+import { Row } from '@/components/block';
 import { rgbaToHex } from '@/utils';
 
 export const Canvas = () => {
@@ -8,7 +10,7 @@ export const Canvas = () => {
 
     return (
         <section className="h-full overflow-y-auto p-6">
-            {components?.map((component: BaseComponent<CanvasProperties>) => (
+            {components?.map((component: CanvasComponentType) => (
                 <div
                     className="mx-auto transition-all duration-300 ease-in-out"
                     onClick={() => setActive(component)}
@@ -25,7 +27,16 @@ export const Canvas = () => {
                     }}
                     key={component.id}
                     aria-hidden
-                />
+                >
+                    <DropZone
+                        hidden={component.children.length !== 0}
+                        component={component}
+                        zoneType="canvas"
+                    />
+                    {component.children?.map((props) => (
+                        <Row key={props.id} {...props} />
+                    ))}
+                </div>
             ))}
         </section>
     );

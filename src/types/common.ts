@@ -1,3 +1,5 @@
+import type { RGBColor } from 'react-color';
+
 export type ComponentType =
     | 'Canvas'
     | 'Row'
@@ -17,10 +19,16 @@ export interface BaseComponent<T> {
     id: string;
     type: ComponentType;
     name: string;
-    parent: BaseComponent<T> | null;
-    children: BaseComponent<T>[];
+    parent: BaseComponent<any> | null;
+    children: BaseComponent<any>[];
     properties: T;
 
-    addChild: (child: BaseComponent<T>) => void;
-    removeChild: (child: BaseComponent<T>) => void;
+    addChild: (child: BaseComponent<any>) => void;
+    removeChild: (child: BaseComponent<any>) => void;
 }
+
+export type Border = {
+    style: 'solid' | 'dashed' | 'dotted';
+    color: RGBColor;
+    width: number;
+};
