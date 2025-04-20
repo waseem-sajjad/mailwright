@@ -19,9 +19,8 @@ export const DropZone: React.FC<DropZoneProps> = ({ component }) => {
                 event.active?.data?.current?.name === 'Row' &&
                 event.over?.id === 'canvas'
             ) {
-                const column = new ColumnComponent();
                 const row = new RowComponent();
-                row.addChild(column);
+                row.addChild(new ColumnComponent());
                 component.addChild(row);
             }
         },
