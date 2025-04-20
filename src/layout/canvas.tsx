@@ -28,11 +28,9 @@ export const Canvas = () => {
                     key={component.id}
                     aria-hidden
                 >
-                    <DropZone
-                        hidden={component.children.length !== 0}
-                        component={component}
-                        zoneType="canvas"
-                    />
+                    {component.children.length === 0 && (
+                        <DropZone component={component} />
+                    )}
                     {component.children?.map((props) => (
                         <Row key={props.id} {...props} />
                     ))}

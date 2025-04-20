@@ -1,18 +1,14 @@
 import { useDndMonitor, useDroppable } from '@dnd-kit/core';
 
-import type { BaseComponent, RowComponentType } from '@/types';
+import type { CanvasComponentType } from '@/types';
 import { RowComponent } from '@/utils/components';
 import { cn } from '@/utils';
 
 interface DropZoneProps {
-    zoneType: 'canvas' | 'row' | 'column';
-    component: BaseComponent<any>;
-    hidden: boolean;
+    component: CanvasComponentType;
 }
 
-const CanvasDropZone: React.FC<{
-    component: RowComponentType;
-}> = ({ component }) => {
+export const DropZone: React.FC<DropZoneProps> = ({ component }) => {
     const { setNodeRef, active, isOver } = useDroppable({
         id: 'canvas',
     });
@@ -44,14 +40,4 @@ const CanvasDropZone: React.FC<{
             </span>
         </div>
     );
-};
-
-export const DropZone: React.FC<DropZoneProps> = ({
-    component,
-    zoneType,
-    hidden,
-}) => {
-    if (hidden === true) return null;
-    if (zoneType === 'canvas') return <CanvasDropZone component={component} />;
-    return null;
 };
