@@ -1,8 +1,8 @@
 import { ColorPicker, Input, SelectBox, Updown } from '@/components/ui';
-import type { BaseComponent, CanvasProperties } from '@/types';
+import type { CanvasComponentType } from '@/types';
 import { useEmail } from '@/hooks';
 
-export const CanvasProperty: React.FC<BaseComponent<CanvasProperties>> = ({
+export const CanvasProperty: React.FC<CanvasComponentType> = ({
     properties,
 }) => {
     const { updateActiveProperties } = useEmail();

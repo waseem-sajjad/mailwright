@@ -1,7 +1,7 @@
 import { useDndMonitor, useDroppable } from '@dnd-kit/core';
 
+import { ColumnComponent, RowComponent } from '@/utils/components';
 import type { CanvasComponentType } from '@/types';
-import { RowComponent } from '@/utils/components';
 import { cn } from '@/utils';
 
 interface DropZoneProps {
@@ -19,7 +19,10 @@ export const DropZone: React.FC<DropZoneProps> = ({ component }) => {
                 event.active?.data?.current?.name === 'Row' &&
                 event.over?.id === 'canvas'
             ) {
-                component.addChild(new RowComponent());
+                const column = new ColumnComponent();
+                const row = new RowComponent();
+                row.addChild(column);
+                component.addChild(row);
             }
         },
     });

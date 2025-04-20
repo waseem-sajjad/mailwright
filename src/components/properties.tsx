@@ -1,4 +1,4 @@
-import { CanvasProperty } from '@/components/property';
+import { CanvasProperty, RowProperty } from '@/components/property';
 import type { BaseComponent } from '@/types';
 
 type Property = Record<
@@ -13,6 +13,6 @@ export const properties: Property = {
     },
     row: {
         name: 'Row Settings',
-        element: () => null,
+        element: RowProperty,
     },
 };

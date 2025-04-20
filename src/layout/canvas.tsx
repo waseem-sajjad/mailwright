@@ -31,8 +31,8 @@ export const Canvas = () => {
                     {component.children.length === 0 && (
                         <DropZone component={component} />
                     )}
-                    {component.children?.map((props) => (
-                        <Row key={props.id} {...props} />
+                    {component.children?.map((row) => (
+                        <Row key={row.id} row={row} />
                     ))}
                 </div>
             ))}
