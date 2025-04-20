@@ -1,12 +1,27 @@
-import type { RGBColor } from 'react-color';
+export type ComponentType =
+    | 'Canvas'
+    | 'Row'
+    | 'Column'
+    | 'Heading'
+    | 'Text'
+    | 'Divider'
+    | 'Button'
+    | 'List'
+    | 'Image'
+    | 'Video'
+    | 'Social'
+    | 'HTML'
+    | 'Menu';
 
-export type BorderType = {
-    style: React.CSSProperties['borderStyle'];
-    width: React.CSSProperties['borderWidth'];
-    color: RGBColor;
-};
-
-export type ComponentType<T> = {
+export interface BaseComponent<T> {
     id: string;
-    styles: T;
-};
+    type: ComponentType;
+    name: string;
+    parent: BaseComponent<T> | null;
+    children: BaseComponent<T>[];
+    properties: T;
+
+    addChild: (child: BaseComponent<T>) => void;
+    removeChild: (child: BaseComponent<T>) => void;
+    updateProperties: (properties: Partial<T>) => void;
+}

@@ -1,14 +1,18 @@
 import { CanvasProperty } from '@/components/property';
+import type { BaseComponent } from '@/types';
 
-type Property = Record<string, { name: string; element: React.ReactNode }>;
+type Property = Record<
+    string,
+    { name: string; element: React.FC<BaseComponent<any>> }
+>;
 
 export const properties: Property = {
-    Canvas: {
+    canvas: {
         name: 'General Settings',
-        element: <CanvasProperty />,
+        element: CanvasProperty,
     },
-    Row: {
+    row: {
         name: 'Row Settings',
-        element: <div>Row Settings</div>,
+        element: () => null,
     },
 };

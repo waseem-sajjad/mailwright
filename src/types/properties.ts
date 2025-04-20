@@ -1,6 +1,6 @@
 import type { RGBColor } from 'react-color';
 
-export type CanvasType = {
+export type CanvasProperties = {
     backgroundColor: RGBColor;
     fontFamily: React.CSSProperties['fontFamily'];
     fontWeight: string;

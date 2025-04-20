@@ -1,2 +1,2 @@
 export * from './useSettings';
-export * from './useCanvas';
+export * from './useEmail';

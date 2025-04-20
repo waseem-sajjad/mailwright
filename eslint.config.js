@@ -104,6 +104,7 @@ export default tseslint.config(
             'react/require-default-props': 'off',
             'react/jsx-props-no-spreading': 'off',
             '@typescript-eslint/comma-dangle': 'off',
+            'no-param-reassign': 'off',
             '@typescript-eslint/consistent-type-imports': 'error',
             'no-restricted-syntax': [
                 'error',

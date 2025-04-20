@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 
+import { useEmail, useSettings } from '@/hooks';
 import { Collapsible } from '@/components/ui';
-import { useSettings } from '@/hooks';
 import { cn } from '@/utils';
 
 import { properties } from './properties';
@@ -14,9 +14,12 @@ interface HeaderProps
 }
 
 const Header: React.FC<HeaderProps> = ({ className, headerType, ...props }) => {
-    const { component } = useSettings();
+    const { active } = useSettings();
+    let component = 'General Settings';
 
-    const active = properties[component].name;
+    if (active !== undefined) {
+        component = properties[active.name].name;
+    }
 
     return (
         <div
@@ -24,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ className, headerType, ...props }) => {
             {...props}
         >
             <h4 className="text-sm font-medium text-gray-700">
-                {headerType === 'components' ? 'Component Panel' : active}
+                {headerType === 'components' ? 'Component Panel' : component}
             </h4>
         </div>
     );
@@ -85,8 +88,22 @@ const Components: React.FC<React.ComponentPropsWithRef<'div'>> = () => (
 );
 
 const Properties: React.FC<React.ComponentPropsWithRef<'div'>> = () => {
-    const { component } = useSettings();
-    return <div className="p-2">{properties[component].element}</div>;
+    const { components: email } = useEmail();
+    const { active } = useSettings();
+
+    let Component = properties[email[0].name].element;
+    let props = email[0];
+
+    if (active !== undefined) {
+        Component = properties[active.name].element;
+        props = active;
+    }
+
+    return (
+        <div className="p-2">
+            <Component {...props} />
+        </div>
+    );
 };
 
 interface PanelComponent

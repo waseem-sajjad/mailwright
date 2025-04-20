@@ -1,3 +1,3 @@
-export * from './common';
-export * from './canvas';
+export * from './properties';
+export * from './components';
 export * from './common';
