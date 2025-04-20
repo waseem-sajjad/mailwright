@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 
-import { useEmail, useSettings } from '@/hooks';
 import { Collapsible } from '@/components/ui';
+import { useEmail } from '@/hooks';
 import { cn } from '@/utils';
 
 import { properties } from './properties';
@@ -14,7 +14,7 @@ interface HeaderProps
 }
 
 const Header: React.FC<HeaderProps> = ({ className, headerType, ...props }) => {
-    const { active } = useSettings();
+    const { active } = useEmail();
     let component = 'General Settings';
 
     if (active !== undefined) {
@@ -88,17 +88,13 @@ const Components: React.FC<React.ComponentPropsWithRef<'div'>> = () => (
 );
 
 const Properties: React.FC<React.ComponentPropsWithRef<'div'>> = () => {
-    const { components: email } = useEmail();
-    const { active } = useSettings();
-
+    const { components: email, active } = useEmail();
     let Component = properties[email[0].name].element;
     let props = email[0];
-
     if (active !== undefined) {
         Component = properties[active.name].element;
         props = active;
     }
-
     return (
         <div className="p-2">
             <Component {...props} />

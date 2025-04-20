@@ -23,5 +23,4 @@ export interface BaseComponent<T> {
 
     addChild: (child: BaseComponent<T>) => void;
     removeChild: (child: BaseComponent<T>) => void;
-    updateProperties: (properties: Partial<T>) => void;
 }

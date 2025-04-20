@@ -47,11 +47,4 @@ export class CanvasComponent implements CanvasComponentType {
             this.children.splice(index, 1);
         }
     }
-
-    updateProperties(properties: Partial<CanvasProperties>) {
-        this.properties = {
-            ...this.properties,
-            ...properties,
-        };
-    }
 }

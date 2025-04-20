@@ -3,8 +3,8 @@ import { useEmail, useSettings } from '@/hooks';
 import { rgbaToHex } from '@/utils';
 
 export const Canvas = () => {
-    const { view, setActive } = useSettings();
-    const { components } = useEmail();
+    const { components, setActive } = useEmail();
+    const { view } = useSettings();
 
     return (
         <section className="h-full overflow-y-auto p-6">
