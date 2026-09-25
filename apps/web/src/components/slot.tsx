@@ -32,6 +32,7 @@ export const Slot: React.FC<SlotProps> = ({
     if (placeholder) {
         return (
             <div
+                data-editor-only
                 className={cn(
                     'flex min-h-16 w-full items-center justify-center border border-dashed border-blue-400 bg-blue-500/10 text-center font-primary text-xs text-blue-700 transition-colors duration-100',
                     {
@@ -49,6 +50,7 @@ export const Slot: React.FC<SlotProps> = ({
 
     return (
         <div
+            data-editor-only
             className={cn(
                 'relative z-10 w-full transition-all duration-150 ease-out',
                 compatible ? 'h-4' : 'h-0',

@@ -14,6 +14,7 @@ import {
     Monitor,
     Redo2,
     Smartphone,
+    Sparkles,
     Tablet,
     Undo2,
 } from 'lucide-react';
@@ -359,6 +360,14 @@ export const Header: React.FC = () => {
                 <History />
                 <span className="mx-1 h-5 w-px bg-gray-300" />
                 <FileMenu />
+                <Button
+                    className="border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                    onClick={() => setDialog('ai')}
+                    title="Generate a template with AI"
+                    size="sm"
+                >
+                    <Sparkles size={14} /> AI
+                </Button>
                 <Button
                     onClick={() => setDialog('preview')}
                     title="Preview (Ctrl+P)"

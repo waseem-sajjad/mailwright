@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { ViewMode } from '@/types';
 
-export type Dialog = 'none' | 'preview' | 'export' | 'templates';
+export type Dialog = 'none' | 'preview' | 'export' | 'templates' | 'ai';
 
 export interface ToastMessage {
     message: string;

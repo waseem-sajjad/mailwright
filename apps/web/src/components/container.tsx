@@ -134,6 +134,7 @@ export const Container: React.FC<ContainerProps> = ({
         >
             {(active || over) && !dragging ? (
                 <div
+                    data-editor-only
                     className={cn(
                         'pointer-events-none absolute right-0 left-0 z-20 flex items-center justify-between',
                         toolbar === 'top' ? '-top-6' : '-bottom-6',

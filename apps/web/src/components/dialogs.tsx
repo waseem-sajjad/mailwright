@@ -13,6 +13,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useEmail, useSettings } from '@/hooks';
 import { Button, CheckBox, Modal } from '@/components/ui';
 import type { Issue, SavedTemplate } from '@/utils';
+import type { CloudTemplate } from '@/utils/api';
+import {
+    deleteCloudTemplate,
+    errorMessage,
+    getCloudTemplate,
+    listCloudTemplates,
+    saveCloudTemplate,
+    screenshotUrl,
+} from '@/utils/api';
+import { captureCanvas } from '@/utils/screenshot';
 import {
     applyMergeTags,
     checkDocument,
@@ -273,13 +283,29 @@ const TemplateCard: React.FC<{
     description: string;
     onSelect: () => void;
     onDelete?: () => void;
-}> = ({ name, description, onSelect, onDelete }) => (
+    thumbnail?: string | null;
+}> = ({ name, description, onSelect, onDelete, thumbnail }) => (
     <div className="relative">
         <button
             className="flex w-full cursor-pointer flex-col gap-1 rounded border border-gray-300 p-3 text-left transition-colors hover:border-blue-400 hover:bg-blue-50"
             onClick={onSelect}
             type="button"
         >
+            {thumbnail !== undefined ? (
+                <div className="mb-1 flex h-28 w-full items-center justify-center overflow-hidden rounded-xs border border-gray-200 bg-gray-100">
+                    {thumbnail ? (
+                        <img
+                            className="h-full w-full object-cover object-top"
+                            src={thumbnail}
+                            alt=""
+                        />
+                    ) : (
+                        <span className="text-[11px] text-gray-400">
+                            No preview
+                        </span>
+                    )}
+                </div>
+            ) : null}
             <span className="pr-6 text-sm font-semibold text-gray-800">
                 {name}
             </span>
@@ -302,12 +328,45 @@ const TemplateCard: React.FC<{
 const TemplatesDialog: React.FC = () => {
     const { dialog, setDialog } = useSettings();
     const { load, root, name } = useEmail();
-    const [tab, setTab] = useState<'starter' | 'saved'>('starter');
+    const [tab, setTab] = useState<'starter' | 'saved' | 'cloud'>('starter');
     const [library, setLibrary] = useState<SavedTemplate[]>([]);
+    const [cloud, setCloud] = useState<CloudTemplate[]>([]);
+    const [cloudError, setCloudError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const notify = useSettings((s) => s.notify);
+
+    const refreshCloud = () =>
+        listCloudTemplates()
+            .then((items) => {
+                setCloud(items);
+                setCloudError(null);
+            })
+            .catch((e) => setCloudError(errorMessage(e)));
 
     useEffect(() => {
-        if (dialog === 'templates') setLibrary(loadLibrary());
+        if (dialog === 'templates') {
+            setLibrary(loadLibrary());
+            refreshCloud();
+        }
     }, [dialog]);
+
+    const saveToCloud = async () => {
+        // eslint-disable-next-line no-alert
+        const title = window.prompt('Save to server library as', name);
+        if (title === null) return;
+        setSaving(true);
+        try {
+            const screenshot = (await captureCanvas()) ?? undefined;
+            await saveCloudTemplate({ name: title, root, screenshot });
+            await refreshCloud();
+            setTab('cloud');
+            notify(`Saved “${title || 'Untitled'}” to the server library`);
+        } catch (e) {
+            setCloudError(errorMessage(e));
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const confirmReplace = () => {
         if (root.children.length === 0) return true;
@@ -336,17 +395,31 @@ const TemplatesDialog: React.FC = () => {
                             setLibrary(saveToLibrary(title, root));
                             setTab('saved');
                         }}
+                        title="Save in this browser only"
                         size="sm"
                     >
-                        Save current
+                        Save locally
+                    </Button>
+                    <Button
+                        title="Save to the server library with a screenshot"
+                        onClick={saveToCloud}
+                        disabled={saving}
+                        size="sm"
+                    >
+                        {saving ? 'Saving…' : 'Save to server'}
                     </Button>
                     <Segmented
                         options={[
                             { value: 'starter', label: 'Starter' },
                             {
                                 value: 'saved',
-                                label: `Saved (${library.length})`,
-                                title: 'Saved',
+                                label: `Local (${library.length})`,
+                                title: 'Local',
+                            },
+                            {
+                                value: 'cloud',
+                                label: `Server (${cloud.length})`,
+                                title: 'Server',
                             },
                         ]}
                         onChange={setTab}
@@ -390,8 +463,52 @@ const TemplatesDialog: React.FC = () => {
                       ))}
                 {tab === 'saved' && library.length === 0 ? (
                     <p className="col-span-full py-8 text-center text-xs text-gray-400">
-                        Nothing saved yet. Use “Save current” or the bookmark
-                        button in the toolbar.
+                        Nothing saved locally yet. Use “Save locally” or the
+                        File menu.
+                    </p>
+                ) : null}
+                {tab === 'cloud'
+                    ? cloud.map((item) => (
+                          <TemplateCard
+                              onDelete={async () => {
+                                  // eslint-disable-next-line no-alert
+                                  const ok = window.confirm(
+                                      `Delete "${item.name}" from the server?`,
+                                  );
+                                  if (!ok) return;
+                                  try {
+                                      await deleteCloudTemplate(item.id);
+                                      await refreshCloud();
+                                  } catch (e) {
+                                      setCloudError(errorMessage(e));
+                                  }
+                              }}
+                              onSelect={async () => {
+                                  try {
+                                      const full = await getCloudTemplate(
+                                          item.id,
+                                      );
+                                      open(full.root, full.name);
+                                  } catch (e) {
+                                      setCloudError(errorMessage(e));
+                                  }
+                              }}
+                              description={`${item.prompt ? 'AI · ' : ''}Saved ${new Date(item.updatedAt).toLocaleString()}`}
+                              thumbnail={screenshotUrl(item)}
+                              name={item.name}
+                              key={item.id}
+                          />
+                      ))
+                    : null}
+                {tab === 'cloud' && cloud.length === 0 && !cloudError ? (
+                    <p className="col-span-full py-8 text-center text-xs text-gray-400">
+                        The server library is empty. Use “Save to server” to add
+                        the current email with a screenshot.
+                    </p>
+                ) : null}
+                {tab === 'cloud' && cloudError ? (
+                    <p className="col-span-full rounded-xs border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                        {cloudError}
                     </p>
                 ) : null}
             </div>

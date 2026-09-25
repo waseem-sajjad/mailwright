@@ -26,6 +26,7 @@ export const Canvas = () => {
                     e.stopPropagation();
                     setActive(root.id);
                 }}
+                data-canvas-root
                 style={{
                     backgroundColor: rgbaToCss(p.backgroundColor),
                     width: VIEW_WIDTH[view],

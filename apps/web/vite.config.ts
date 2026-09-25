@@ -8,5 +8,11 @@ export default defineConfig({
     plugins: [react(), tsconfigPaths(), tailwindcss()],
     server: {
         port: 3000,
+        proxy: {
+            '/api': {
+                target: process.env.API_URL ?? 'http://localhost:8787',
+                changeOrigin: true,
+            },
+        },
     },
 });

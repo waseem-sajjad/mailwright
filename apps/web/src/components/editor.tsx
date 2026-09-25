@@ -1,4 +1,5 @@
 import { Canvas, Content, Root, Sidebar } from '@/layout';
+import { AiDialog } from '@/components/ai';
 import { Dialogs } from '@/components/dialogs';
 import { Toast } from '@/components/toast';
 import { Panel } from '@/components/panel';
@@ -29,6 +30,7 @@ const Editor = () => {
                 </Sidebar.Content>
             </Sidebar>
             <Dialogs />
+            <AiDialog />
             <Toast />
         </Root>
     );
