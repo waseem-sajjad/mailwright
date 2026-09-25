@@ -1,19 +1,26 @@
 import type {
     Align,
     ButtonProperties,
+    CalloutProperties,
     CanvasNode,
     CanvasProperties,
     ColumnNode,
+    CouponProperties,
     DividerProperties,
     EmailNode,
+    FooterProperties,
     HeadingProperties,
     HtmlProperties,
+    IconsProperties,
     ImageProperties,
     ListProperties,
     MenuProperties,
+    ProductProperties,
+    QuoteProperties,
     RowNode,
     SocialProperties,
     SpacerProperties,
+    TableProperties,
     TextProperties,
     VideoProperties,
     Visibility,
@@ -287,6 +294,218 @@ const renderMenu = (p: MenuProperties, ctx: Context): string => {
 const renderSpacer = (p: SpacerProperties): string =>
     `<div${visibilityClass(p)} style="height:${p.height}px;line-height:${p.height}px;font-size:0;${visibilityStyle(p)}">&nbsp;</div>`;
 
+const renderTable = (p: TableProperties, ctx: Context): string => {
+    const border = `${p.borderWidth}px solid ${rgbaToCss(p.borderColor)}`;
+    const rows = p.rows
+        .map((row, r) => {
+            const isHeader = p.headerRow && r === 0;
+            const striped =
+                p.stripe && !isHeader && (p.headerRow ? r : r + 1) % 2 === 0;
+            let bg = '';
+            if (isHeader)
+                bg = `background-color:${rgbaToCss(p.headerBackground)};`;
+            else if (striped)
+                bg = `background-color:${rgbaToCss(p.stripeColor)};`;
+            const bgAttrValue = (() => {
+                if (isHeader) return bgAttr(p.headerBackground);
+                if (striped) return bgAttr(p.stripeColor);
+                return '';
+            })();
+            const cells = row
+                .map((cell) => {
+                    const tag = isHeader ? 'th' : 'td';
+                    const style = [
+                        `border:${border}`,
+                        `padding:${p.cellPadding}px`,
+                        `font-family:${ctx.canvas.fontFamily}`,
+                        `font-size:${p.fontSize}px`,
+                        'text-align:left',
+                        `font-weight:${isHeader ? 'bold' : 'normal'}`,
+                        `color:${isHeader ? rgbaToCss(p.headerColor) : rgbaToCss(ctx.canvas.color)}`,
+                        bg,
+                    ]
+                        .filter(Boolean)
+                        .join(';');
+                    return `<${tag}${bgAttrValue} style="${style};">${cell || '&nbsp;'}</${tag}>`;
+                })
+                .join('');
+            return `<tr>${cells}</tr>`;
+        })
+        .join('');
+    return wrap(
+        `<table ${TABLE} width="${p.width}%" align="${p.align}" style="width:${p.width}%;border-collapse:collapse;">${rows}</table>`,
+        p.padding,
+        p.align,
+        p,
+    );
+};
+
+const shapeRadius = (
+    shape: 'circle' | 'rounded' | 'square',
+    size: number,
+): number => {
+    if (shape === 'circle') return size / 2;
+    if (shape === 'rounded') return 6;
+    return 0;
+};
+
+const renderIcons = (p: IconsProperties, ctx: Context): string => {
+    const radius = shapeRadius(p.iconShape, p.iconSize);
+    const iconFor = (icon: string, iconUrl: string) =>
+        iconUrl
+            ? `<img src="${escapeHtml(iconUrl)}" alt="" width="${p.iconSize}" height="${p.iconSize}" style="display:block;width:${p.iconSize}px;height:${p.iconSize}px;border-radius:${radius}px;border:0;" />`
+            : `<table ${TABLE}><tr><td${bgAttr(p.iconBackground)} width="${p.iconSize}" height="${p.iconSize}" align="center" valign="middle" style="width:${p.iconSize}px;height:${p.iconSize}px;border-radius:${radius}px;background-color:${rgbaToCss(p.iconBackground)};color:${rgbaToCss(p.iconColor)};font-family:Arial,sans-serif;font-size:${Math.round(p.iconSize * 0.5)}px;line-height:${p.iconSize}px;text-align:center;">${escapeHtml(icon)}</td></tr></table>`;
+    const textStyle = `font-family:${ctx.canvas.fontFamily};font-size:${p.fontSize}px;color:${rgbaToCss(ctx.canvas.color)};line-height:1.5`;
+
+    if (p.layout === 'horizontal') {
+        const width = Math.floor(100 / Math.max(1, p.items.length));
+        const cells = p.items
+            .map(
+                (item) =>
+                    `<td class="stack" width="${width}%" valign="top" align="center" style="width:${width}%;padding:0 ${p.gap / 2}px;text-align:center;${textStyle};"><table ${TABLE} align="center"><tr><td>${iconFor(item.icon, item.iconUrl)}</td></tr></table><div style="font-weight:${p.titleWeight};margin-top:8px;">${item.title}</div><div style="margin-top:2px;">${item.text}</div></td>`,
+            )
+            .join('');
+        return wrap(
+            `<table ${TABLE} width="100%"><tr>${cells}</tr></table>`,
+            p.padding,
+            p.align,
+            p,
+        );
+    }
+
+    const rows = p.items
+        .map(
+            (item, i) =>
+                `<tr><td width="${p.iconSize}" valign="top" style="width:${p.iconSize}px;padding:${i === 0 ? 0 : p.gap}px 12px 0 0;">${iconFor(item.icon, item.iconUrl)}</td><td valign="top" style="padding:${i === 0 ? 0 : p.gap}px 0 0 0;text-align:${p.align};${textStyle};"><div style="font-weight:${p.titleWeight};">${item.title}</div><div style="margin-top:2px;">${item.text}</div></td></tr>`,
+        )
+        .join('');
+    return wrap(
+        `<table ${TABLE} width="100%">${rows}</table>`,
+        p.padding,
+        p.align,
+        p,
+    );
+};
+
+const renderProduct = (p: ProductProperties, ctx: Context): string => {
+    const image = `<img src="${escapeHtml(p.image || PLACEHOLDER_IMAGE)}" alt="${escapeHtml(p.imageAlt)}" width="100%" style="display:block;width:100%;max-width:100%;height:auto;border:0;border-radius:${p.border.radius}px;" />`;
+    const text = `font-family:${ctx.canvas.fontFamily};color:${rgbaToCss(ctx.canvas.color)};`;
+    const button = p.buttonText
+        ? `<table ${TABLE} align="${p.layout === 'horizontal' ? 'left' : p.align}" style="margin-top:12px;"><tr><td${bgAttr(p.buttonBackground)} style="background-color:${rgbaToCss(p.buttonBackground)};border-radius:4px;"><a href="${escapeHtml(p.buttonHref)}" target="_blank" style="display:inline-block;padding:10px 20px;font-family:${ctx.canvas.fontFamily};font-size:${p.fontSize}px;font-weight:bold;color:${rgbaToCss(p.buttonColor)};text-decoration:none;border-radius:4px;">${escapeHtml(p.buttonText)}</a></td></tr></table>`
+        : '';
+    const details = `<div style="${text}font-size:${p.fontSize + 4}px;font-weight:bold;">${escapeHtml(p.title)}</div><div style="${text}font-size:${p.fontSize}px;line-height:1.5;margin-top:6px;">${escapeHtml(p.description)}</div><div style="${text}font-size:${p.fontSize + 2}px;margin-top:10px;">${p.oldPrice ? `<s style="opacity:0.6;margin-right:8px;">${escapeHtml(p.oldPrice)}</s>` : ''}<strong>${escapeHtml(p.price)}</strong></div>${button}`;
+    const cardStyle = [
+        isTransparent(p.backgroundColor)
+            ? ''
+            : `background-color:${rgbaToCss(p.backgroundColor)}`,
+        `border:${borderCss(p.border)}`,
+        `border-radius:${p.border.radius}px`,
+    ]
+        .filter(Boolean)
+        .join(';');
+    const inner =
+        p.layout === 'horizontal'
+            ? `<tr><td class="stack" width="${p.imageWidth}%" valign="top" style="width:${p.imageWidth}%;padding:12px;">${image}</td><td class="stack" valign="top" style="padding:12px;text-align:left;">${details}</td></tr>`
+            : `<tr><td style="padding:12px;text-align:${p.align};">${image}<div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>${details}</td></tr>`;
+    return wrap(
+        `<table ${TABLE} width="100%"${bgAttr(p.backgroundColor)} style="${cardStyle};">${inner}</table>`,
+        p.padding,
+        'left',
+        p,
+    );
+};
+
+const starText = (rating: number): string => {
+    const n = Math.max(0, Math.min(5, Math.round(rating)));
+    return '&#9733;'.repeat(n) + '&#9734;'.repeat(5 - n);
+};
+
+const renderQuote = (p: QuoteProperties, ctx: Context): string => {
+    const color = resolveColor(p.inheritColor, p.color, ctx);
+    const accent = rgbaToCss(p.accentColor);
+    const mark = (glyph: string, side: 'left' | 'right') =>
+        p.showMarks
+            ? `<span style="color:${accent};font-size:${Math.round(p.fontSize * 1.6)}px;line-height:0;vertical-align:-0.3em;${side === 'left' ? 'margin-right' : 'margin-left'}:4px;">${glyph}</span>`
+            : '';
+    const stars =
+        p.rating > 0
+            ? `<div style="color:#f59e0b;font-size:${p.fontSize}px;letter-spacing:2px;margin-bottom:8px;">${starText(p.rating)}</div>`
+            : '';
+    const avatar = p.avatar
+        ? `<td width="36" valign="middle" style="width:36px;padding-right:10px;"><img src="${escapeHtml(p.avatar)}" alt="" width="36" height="36" style="display:block;width:36px;height:36px;border-radius:18px;border:0;" /></td>`
+        : '';
+    const byline =
+        p.author || p.role
+            ? `<table ${TABLE} align="${p.align}" style="margin-top:12px;"><tr>${avatar}<td valign="middle" style="font-family:${ctx.canvas.fontFamily};font-size:${p.fontSize - 2}px;color:${color};"><div style="font-weight:bold;">${escapeHtml(p.author)}</div>${p.role ? `<div style="opacity:0.7;">${escapeHtml(p.role)}</div>` : ''}</td></tr></table>`
+            : '';
+    const body = `<div style="font-family:${ctx.canvas.fontFamily};font-size:${p.fontSize}px;line-height:1.5;color:${color};font-style:${p.italic ? 'italic' : 'normal'};">${mark('&ldquo;', 'left')}${escapeHtml(p.text)}${mark('&rdquo;', 'right')}</div>`;
+    return wrap(
+        `<table ${TABLE} width="100%"${bgAttr(p.backgroundColor)} style="background-color:${rgbaToCss(p.backgroundColor)};border-left:4px solid ${accent};"><tr><td style="padding:16px 20px;text-align:${p.align};">${stars}${body}${byline}</td></tr></table>`,
+        p.padding,
+        'left',
+        p,
+    );
+};
+
+const renderCoupon = (p: CouponProperties, ctx: Context): string => {
+    const font = `font-family:${ctx.canvas.fontFamily};color:${rgbaToCss(ctx.canvas.color)};`;
+    const label = p.label
+        ? `<div style="${font}font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:0.75;">${escapeHtml(p.label)}</div>`
+        : '';
+    const description = p.description
+        ? `<div style="${font}font-size:13px;opacity:0.8;margin-top:8px;">${escapeHtml(p.description)}</div>`
+        : '';
+    const code = `<table ${TABLE} align="${p.align}" style="margin-top:8px;"><tr><td${bgAttr(p.codeBackground)} style="background-color:${rgbaToCss(p.codeBackground)};border-radius:6px;padding:8px 18px;font-family:'Courier New',Courier,monospace;font-size:${p.codeSize}px;font-weight:bold;letter-spacing:3px;color:${rgbaToCss(p.codeColor)};">${escapeHtml(p.code)}</td></tr></table>`;
+    return wrap(
+        `<table ${TABLE} width="100%"${bgAttr(p.backgroundColor)} style="background-color:${rgbaToCss(p.backgroundColor)};border:2px dashed ${rgbaToCss(p.borderColor)};border-radius:8px;"><tr><td style="padding:18px 20px;text-align:${p.align};">${label}${code}${description}</td></tr></table>`,
+        p.padding,
+        'left',
+        p,
+    );
+};
+
+const renderCallout = (p: CalloutProperties, ctx: Context): string => {
+    const font = `font-family:${ctx.canvas.fontFamily};font-size:${p.fontSize}px;line-height:1.5;color:${rgbaToCss(p.color)};`;
+    const icon = p.icon
+        ? `<td valign="top" width="28" style="width:28px;padding:14px 0 14px 16px;font-size:${p.fontSize + 6}px;line-height:1.2;">${escapeHtml(p.icon)}</td>`
+        : '';
+    const title = p.title
+        ? `<div style="font-weight:bold;margin-bottom:2px;">${escapeHtml(p.title)}</div>`
+        : '';
+    return wrap(
+        `<table ${TABLE} width="100%"${bgAttr(p.backgroundColor)} style="background-color:${rgbaToCss(p.backgroundColor)};border-left:4px solid ${rgbaToCss(p.accentColor)};border-radius:${p.radius}px;"><tr>${icon}<td valign="top" style="padding:14px 16px;${font}">${title}<div>${escapeHtml(p.text)}</div></td></tr></table>`,
+        p.padding,
+        'left',
+        p,
+    );
+};
+
+const renderFooter = (p: FooterProperties, ctx: Context): string => {
+    const font = `font-family:${ctx.canvas.fontFamily};font-size:${p.fontSize}px;line-height:1.6;color:${rgbaToCss(p.color)};`;
+    const link = `color:${rgbaToCss(p.linkColor)};text-decoration:underline;`;
+    const links = [
+        p.unsubscribeText
+            ? `<a href="${escapeHtml(p.unsubscribeHref)}" style="${link}">${escapeHtml(p.unsubscribeText)}</a>`
+            : '',
+        p.preferencesText
+            ? `<a href="${escapeHtml(p.preferencesHref)}" style="${link}">${escapeHtml(p.preferencesText)}</a>`
+            : '',
+    ]
+        .filter(Boolean)
+        .join(' &middot; ');
+    const lines = [
+        p.company
+            ? `<div style="font-weight:bold;">${escapeHtml(p.company)}</div>`
+            : '',
+        p.address ? `<div>${escapeHtml(p.address)}</div>` : '',
+        p.text
+            ? `<div style="margin-top:6px;">${escapeHtml(p.text)}</div>`
+            : '',
+        links ? `<div style="margin-top:6px;">${links}</div>` : '',
+    ].join('');
+    return wrap(`<div style="${font}">${lines}</div>`, p.padding, p.align, p);
+};
+
 export const renderContent = (node: EmailNode, ctx: Context): string => {
     switch (node.type) {
         case 'Heading':
@@ -311,6 +530,20 @@ export const renderContent = (node: EmailNode, ctx: Context): string => {
             return renderMenu(node.properties, ctx);
         case 'Spacer':
             return renderSpacer(node.properties);
+        case 'Table':
+            return renderTable(node.properties, ctx);
+        case 'Icons':
+            return renderIcons(node.properties, ctx);
+        case 'Product':
+            return renderProduct(node.properties, ctx);
+        case 'Quote':
+            return renderQuote(node.properties, ctx);
+        case 'Coupon':
+            return renderCoupon(node.properties, ctx);
+        case 'Callout':
+            return renderCallout(node.properties, ctx);
+        case 'Footer':
+            return renderFooter(node.properties, ctx);
         default:
             return '';
     }

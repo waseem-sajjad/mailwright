@@ -111,6 +111,67 @@ export const checkDocument = (root: CanvasNode): Issue[] => {
                     }
                 });
                 break;
+            case 'Product':
+                if (isPlaceholderUrl(p.buttonHref) && p.buttonText) {
+                    push(
+                        'error',
+                        `Product "${p.title}" button has a placeholder link.`,
+                        node.id,
+                    );
+                }
+                if (!p.image)
+                    push(
+                        'warning',
+                        `Product "${p.title}" has no image.`,
+                        node.id,
+                    );
+                else if (String(p.image).startsWith('data:')) {
+                    push(
+                        'error',
+                        'Product image is embedded (data URI). Host it and use the URL.',
+                        node.id,
+                    );
+                }
+                break;
+            case 'Footer':
+                if (!String(p.address).trim()) {
+                    push(
+                        'warning',
+                        'Footer has no postal address; most spam laws require one.',
+                        node.id,
+                    );
+                }
+                if (p.unsubscribeText && isPlaceholderUrl(p.unsubscribeHref)) {
+                    push(
+                        'error',
+                        'Footer unsubscribe link is a placeholder.',
+                        node.id,
+                    );
+                }
+                if (p.preferencesText && isPlaceholderUrl(p.preferencesHref)) {
+                    push(
+                        'warning',
+                        'Footer preferences link is a placeholder.',
+                        node.id,
+                    );
+                }
+                break;
+            case 'Icons':
+                p.items.forEach((item: { iconUrl: string; title: string }) => {
+                    if (String(item.iconUrl).startsWith('data:')) {
+                        push(
+                            'error',
+                            `Icon for "${item.title}" is embedded (data URI).`,
+                            node.id,
+                        );
+                    }
+                });
+                break;
+            case 'Table':
+                if (p.rows.length === 0 || p.rows[0].length === 0) {
+                    push('warning', 'Table is empty.', node.id);
+                }
+                break;
             case 'HTML':
                 if (/<script[\s>]/i.test(p.html)) {
                     push(
