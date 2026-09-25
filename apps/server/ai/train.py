@@ -20,6 +20,10 @@ from pathlib import Path
 
 import torch
 from datasets import Dataset
+try:
+    from .codec import encode_text
+except ImportError:  # run as a script: python ai/train.py
+    from codec import encode_text
 from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
@@ -92,12 +96,12 @@ def main() -> None:
 
     def encode(batch):
         inputs = tokenizer(
-            [with_prefix(p) for p in batch["prompt"]],
+            [encode_text(with_prefix(p)) for p in batch["prompt"]],
             max_length=MAX_INPUT,
             truncation=True,
         )
         labels = tokenizer(
-            text_target=batch["dsl"],
+            text_target=[encode_text(d) for d in batch["dsl"]],
             max_length=MAX_OUTPUT,
             truncation=True,
         )

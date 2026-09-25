@@ -16,6 +16,11 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
+try:
+    from .codec import decode_text, encode_text
+except ImportError:  # run from inside ai/
+    from codec import decode_text, encode_text
+
 PREFIX = "Generate an email template.\nRequest: "
 REFINE_PREFIX = "Edit an email template.\nCurrent:\n{dsl}\nInstruction: {instruction}"
 MAX_INPUT = 640
@@ -63,7 +68,8 @@ def health() -> dict:
 
 @app.post("/generate")
 def generate(req: GenerateRequest) -> dict:
-    inputs = tokenizer(build_prompt(req), return_tensors="pt", truncation=True, max_length=MAX_INPUT).to(DEVICE)
+    text = encode_text(build_prompt(req))
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=MAX_INPUT).to(DEVICE)
     with torch.inference_mode():
         output = model.generate(
             **inputs,
@@ -72,5 +78,5 @@ def generate(req: GenerateRequest) -> dict:
             no_repeat_ngram_size=0,
             early_stopping=True,
         )
-    dsl = tokenizer.decode(output[0], skip_special_tokens=True)
+    dsl = decode_text(tokenizer.decode(output[0], skip_special_tokens=True))
     return {"dsl": dsl}

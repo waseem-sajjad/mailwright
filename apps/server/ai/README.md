@@ -12,6 +12,15 @@ Two engines produce the compact template DSL (see `../src/dsl.ts`):
 The DSL is deliberately short (150-300 tokens) so a small model can learn it
 and a normal VPS can run inference in a few seconds.
 
+**Text codec.** T5's tokenizer has no newline, `{` or `}` tokens, so raw DSL
+would come back as one line with `first_name` instead of `{{first_name}}`.
+`ai/codec.py` (mirrored by `src/prompts.ts`) rewrites newlines to ` @@ ` and
+`{{tag}}` to `[[tag]]` on the way in, and reverses it on the way out.
+`train.py`, `serve.py` and `pipeline.py` all use it; the jsonl dataset stays
+raw. Models trained before the codec still work: the Node server's
+`repairDsl()` re-inserts the line breaks and braces, but retrain to get clean
+output.
+
 ## 1. Build the dataset
 
 ```bash

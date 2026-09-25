@@ -210,13 +210,13 @@ const hashString = (value: string): number => {
     return h >>> 0;
 };
 
-const detect = <K extends string>(
+const detect = <K extends string, F = K>(
     prompt: string,
     bank: Record<K, string[]>,
-    fallback: K,
-): K => {
+    fallback: F,
+): K | F => {
     const lower = prompt.toLowerCase();
-    let best: { key: K; score: number } = { key: fallback, score: 0 };
+    let best: { key: K | F; score: number } = { key: fallback, score: 0 };
     (Object.keys(bank) as K[]).forEach((key) => {
         const score = bank[key].reduce(
             (sum, kw) => sum + (lower.includes(kw) ? kw.length : 0),
@@ -478,4 +478,37 @@ export const generateDsl = (prompt: string, options: GenerateOptions = {}): stri
     const analysis = analyse(prompt, options);
     const seed = options.seed ?? hashString(prompt + JSON.stringify(options));
     return stringifyDsl(blueprint(analysis, mulberry32(seed)));
+};
+
+/**
+ * Fills in what the current prompt leaves open (company, brand colour, tone,
+ * type) from earlier prompts of the same chat, so "now a newsletter" after
+ * "welcome email for Bluebird Coffee #b45309" keeps the company and colour.
+ * Explicit options and anything the current prompt states win.
+ */
+export const withHistory = (
+    prompt: string,
+    options: GenerateOptions,
+    history: string[],
+): GenerateOptions => {
+    const past = history.map((h) => h.trim()).filter(Boolean).join('. ');
+    if (!past) return options;
+    const merged: GenerateOptions = { ...options };
+    if (!merged.company && !detectCompany(prompt)) {
+        const company = detectCompany(past);
+        if (company) merged.company = company;
+    }
+    if (!merged.brand && !/#[0-9a-f]{6}\b/i.test(prompt)) {
+        const hex = past.match(/#[0-9a-f]{6}\b/i)?.[0];
+        if (hex) merged.brand = hex;
+    }
+    if ((!merged.tone || merged.tone === 'auto') && detect(prompt, TONE_KEYWORDS, null) === null) {
+        const tone = detect(past, TONE_KEYWORDS, null);
+        if (tone) merged.tone = tone;
+    }
+    if ((!merged.type || merged.type === 'auto') && detect(prompt, TYPE_KEYWORDS, null) === null) {
+        const type = detect(past, TYPE_KEYWORDS, null);
+        if (type) merged.type = type;
+    }
+    return merged;
 };

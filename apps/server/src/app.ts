@@ -9,7 +9,7 @@ import { exportHtml, normalizeNode } from '@/utils';
 
 import { generate, modelStatus, refine } from './ai.ts';
 import { generations, templates } from './db.ts';
-import { generateDsl } from './generator.ts';
+import { generateDsl, withHistory } from './generator.ts';
 import { suggestSubjects } from './subjects.ts';
 import { seedStarters } from './seed.ts';
 import { removeScreenshot, saveScreenshot, screenshotFile } from './screenshot.ts';
@@ -52,11 +52,11 @@ export const createApp = () => {
 
     /* ---------- AI ---------- */
     app.post('/api/ai/generate', validate(generateBody), async (req: Request, res: Response) => {
-        const { prompt, options } = req.body as GenerateBody;
-        const result = await generate(prompt, options);
+        const { prompt, options, history } = req.body as GenerateBody;
+        const result = await generate(prompt, options, history);
         const saved = generations.create({
             prompt,
-            options,
+            options: history.length > 0 ? { ...options, history } : options,
             dsl: result.dsl,
             root: result.root,
             engine: result.engine,
@@ -74,11 +74,11 @@ export const createApp = () => {
 
     /** Follow-up instruction applied to a previous result (chat refinement). */
     app.post('/api/ai/refine', validate(refineBody), async (req: Request, res: Response) => {
-        const { prompt, dsl, instruction, options } = req.body as RefineBody;
-        const result = await refine(prompt, dsl, instruction, options);
+        const { prompt, dsl, instruction, options, history } = req.body as RefineBody;
+        const result = await refine(prompt, dsl, instruction, options, history);
         const saved = generations.create({
             prompt: `${prompt}\n→ ${instruction}`,
-            options: { ...options, refine: true, instruction },
+            options: { ...options, refine: true, instruction, history },
             dsl: result.dsl,
             root: result.root,
             engine: result.engine,
@@ -97,8 +97,9 @@ export const createApp = () => {
 
     /** Subject line and preheader ideas for a brief. */
     app.post('/api/ai/subjects', validate(subjectsBody), (req, res) => {
-        const { prompt, options } = req.body as GenerateBody;
-        res.json(suggestSubjects(prompt, options));
+        const { prompt, options, history } = req.body as GenerateBody;
+        const brief = history.length > 0 ? `${history.join('. ')}. ${prompt}` : prompt;
+        res.json(suggestSubjects(brief, withHistory(prompt, options, history)));
     });
 
     /** Re-expand edited DSL without calling the model. */

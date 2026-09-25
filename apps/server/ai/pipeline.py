@@ -26,6 +26,10 @@ def run(cmd: list[str], **env: str) -> None:
 
 
 def smoke_test(model_dir: str) -> None:
+    try:
+        from .codec import decode_text, encode_text
+    except ImportError:
+        from codec import decode_text, encode_text
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # noqa: WPS433
 
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
@@ -36,9 +40,9 @@ def smoke_test(model_dir: str) -> None:
         "Monthly newsletter for Lumen Labs, a SaaS startup.",
     ]
     for prompt in prompts:
-        inputs = tokenizer("Generate an email template.\nRequest: " + prompt, return_tensors="pt")
+        inputs = tokenizer(encode_text("Generate an email template.\nRequest: " + prompt), return_tensors="pt")
         output = model.generate(**inputs, max_new_tokens=512, num_beams=2)
-        dsl = tokenizer.decode(output[0], skip_special_tokens=True)
+        dsl = decode_text(tokenizer.decode(output[0], skip_special_tokens=True))
         rows = [line for line in dsl.splitlines() if line.startswith("row")]
         print(f"\n--- {prompt}\n{dsl[:600]}\n({len(rows)} rows)")
 

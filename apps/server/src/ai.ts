@@ -9,7 +9,8 @@ import type { CanvasNode } from '@/types';
 import { normalizeNode } from '@/utils';
 
 import { dslToTree, parseDsl } from './dsl.ts';
-import { generateDsl, type GenerateOptions } from './generator.ts';
+import { generateDsl, type GenerateOptions, withHistory } from './generator.ts';
+import { repairDsl } from './prompts.ts';
 import { refineDsl } from './refine.ts';
 
 export type Engine = 'model' | 'rules';
@@ -66,7 +67,8 @@ const askModel = async (
             current: refine?.dsl,
             instruction: refine?.instruction,
         });
-        return data.dsl?.trim() || null;
+        const dsl = data.dsl ? repairDsl(data.dsl) : '';
+        return dsl || null;
     } catch (error) {
         if (axios.isAxiosError(error)) {
             // eslint-disable-next-line no-console
@@ -79,11 +81,17 @@ const askModel = async (
 /** A model answer must at least parse into one row to be trusted. */
 const usable = (dsl: string): boolean => parseDsl(dsl).rows.length > 0;
 
+/**
+ * `history` holds the earlier prompts of the same chat; they fill in the
+ * company, colour, tone and type the new prompt does not state itself.
+ */
 export const generate = async (
     prompt: string,
     options: GenerateOptions = {},
+    history: string[] = [],
 ): Promise<GenerationResult> => {
-    const fromModel = await askModel(prompt, options);
+    const effective = withHistory(prompt, options, history);
+    const fromModel = await askModel(prompt, effective);
     if (fromModel && usable(fromModel)) {
         const status = await modelStatus();
         return {
@@ -93,7 +101,7 @@ export const generate = async (
             model: status.name,
         };
     }
-    const dsl = generateDsl(prompt, options);
+    const dsl = generateDsl(prompt, effective);
     return {
         dsl,
         root: normalizeNode(dslToTree(parseDsl(dsl))) as CanvasNode,
@@ -112,8 +120,10 @@ export const refine = async (
     dsl: string,
     instruction: string,
     options: GenerateOptions = {},
+    history: string[] = [],
 ): Promise<RefineOutcome> => {
-    const fromModel = await askModel(prompt, options, { dsl, instruction });
+    const effective = withHistory(instruction, options, [prompt, ...history]);
+    const fromModel = await askModel(prompt, effective, { dsl, instruction });
     if (fromModel && usable(fromModel) && fromModel !== dsl) {
         const status = await modelStatus();
         return {
@@ -124,7 +134,7 @@ export const refine = async (
             applied: ['Updated by the fine-tuned model'],
         };
     }
-    const result = refineDsl(dsl, instruction, { prompt, options });
+    const result = refineDsl(dsl, instruction, { prompt, options: effective });
     return {
         dsl: result.dsl,
         root: normalizeNode(dslToTree(parseDsl(result.dsl))) as CanvasNode,

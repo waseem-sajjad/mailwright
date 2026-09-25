@@ -35,9 +35,13 @@ export const generateOptions = z
     })
     .strict();
 
+/** Earlier prompts of the same chat, oldest first (context for the engines). */
+const history = z.array(z.string().trim().min(1).max(1000)).max(10).default([]);
+
 export const generateBody = z.object({
     prompt: z.string().trim().min(3, 'Describe the email you want in a few words.').max(1000),
     options: generateOptions.default({}),
+    history,
 });
 
 export const refineBody = z.object({
@@ -45,11 +49,13 @@ export const refineBody = z.object({
     dsl: z.string().trim().min(1).max(20000),
     instruction: z.string().trim().min(2, 'Tell me what to change.').max(500),
     options: generateOptions.default({}),
+    history,
 });
 
 export const subjectsBody = z.object({
     prompt: z.string().trim().min(3).max(1000),
     options: generateOptions.default({}),
+    history,
 });
 
 export const expandBody = z.object({
