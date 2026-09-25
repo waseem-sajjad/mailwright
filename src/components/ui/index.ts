@@ -13,3 +13,4 @@ export * from './align';
 export * from './group';
 export * from './modal';
 export * from './menu';
+export * from './taginput';

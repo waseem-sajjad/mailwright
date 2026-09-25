@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { useEmail } from '@/hooks';
-import { cn } from '@/utils';
+import { cn, forgetSelection, rememberSelection } from '@/utils';
 
 interface EditableProps {
     id: string;
@@ -47,6 +47,13 @@ export const Editable: React.FC<EditableProps> = ({
         if (el.innerHTML !== html) el.innerHTML = html;
     }, [html]);
 
+    useEffect(() => {
+        const el = ref.current;
+        return () => {
+            if (el) forgetSelection(el);
+        };
+    }, []);
+
     const Tag = tag as 'div';
 
     return (
@@ -65,7 +72,12 @@ export const Editable: React.FC<EditableProps> = ({
                 document.execCommand('insertText', false, text);
             }}
             onFocus={() => setActive(id)}
-            onBlur={() => commit()}
+            onBlur={(e) => {
+                rememberSelection(e.currentTarget as HTMLElement);
+                commit();
+            }}
+            onKeyUp={(e) => rememberSelection(e.currentTarget as HTMLElement)}
+            onMouseUp={(e) => rememberSelection(e.currentTarget as HTMLElement)}
             suppressContentEditableWarning
             contentEditable
             style={style}

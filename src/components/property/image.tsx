@@ -12,6 +12,7 @@ import {
     Divider,
     Field,
     Input,
+    TagInput,
     Updown,
 } from '@/components/ui';
 
@@ -78,12 +79,11 @@ export const ImageProperty: React.FC<{ node: ImageNode }> = ({ node }) => {
                 />
             </Field>
             <Field label="Link URL" hint="Optional" stacked>
-                <Input
-                    onChange={(e) => setTransient({ href: e.target.value })}
+                <TagInput
+                    onValueChange={(href) => setTransient({ href })}
                     placeholder="https://"
                     onBlur={commit}
                     value={p.href}
-                    type="url"
                 />
             </Field>
             <Divider />

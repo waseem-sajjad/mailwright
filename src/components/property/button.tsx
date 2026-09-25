@@ -6,8 +6,8 @@ import {
     CheckBox,
     Divider,
     Field,
-    Input,
     SelectBox,
+    TagInput,
     Updown,
 } from '@/components/ui';
 
@@ -19,19 +19,18 @@ export const ButtonProperty: React.FC<{ node: ButtonNode }> = ({ node }) => {
     return (
         <div className="flex flex-col gap-5 py-5">
             <Field label="Label" stacked>
-                <Input
-                    onChange={(e) => setTransient({ text: e.target.value })}
+                <TagInput
+                    onValueChange={(text) => setTransient({ text })}
                     onBlur={commit}
                     value={p.text}
                 />
             </Field>
             <Field label="Link URL" stacked>
-                <Input
-                    onChange={(e) => setTransient({ href: e.target.value })}
+                <TagInput
+                    onValueChange={(href) => setTransient({ href })}
                     placeholder="https://"
                     onBlur={commit}
                     value={p.href}
-                    type="url"
                 />
             </Field>
             <Field label="Open In">

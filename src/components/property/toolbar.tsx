@@ -1,5 +1,6 @@
 import {
     Bold,
+    Braces,
     Italic,
     Link as LinkIcon,
     RemoveFormatting,
@@ -7,11 +8,19 @@ import {
     Unlink,
 } from 'lucide-react';
 
-import { formatTag } from '@/utils';
-import { useEmail } from '@/hooks';
+import { execOnEditable, formatTag } from '@/utils';
+import { Menu } from '@/components/ui';
+import { useEmail, useSettings } from '@/hooks';
 
 const exec = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
+    if (!execOnEditable(command, value)) {
+        useSettings
+            .getState()
+            .notify(
+                'Click into the text block first, then apply formatting.',
+                'info',
+            );
+    }
 };
 
 const Btn: React.FC<{
@@ -35,25 +44,39 @@ const Btn: React.FC<{
 const MergeTagPicker: React.FC = () => {
     const tags = useEmail((s) => s.root.properties.mergeTags);
     return (
-        <select
-            className="cursor-pointer rounded-xs border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-600"
-            // Keep the contentEditable selection alive when opening the picker.
-            onMouseDown={(e) => e.stopPropagation()}
-            onChange={(e) => {
-                if (e.target.value)
-                    exec('insertText', formatTag(e.target.value));
-                e.target.value = '';
-            }}
-            aria-label="Insert merge tag"
-            defaultValue=""
+        <Menu
+            trigger={
+                <button
+                    className="flex cursor-pointer items-center gap-1.5 rounded-xs border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-600 hover:border-blue-400 hover:text-blue-600"
+                    aria-label="Insert merge tag"
+                    type="button"
+                >
+                    <Braces size={13} /> Insert merge tag
+                </button>
+            }
+            className="min-w-56"
+            align="start"
+            preserveFocus
         >
-            <option value="">Insert tag…</option>
             {tags.map((tag) => (
-                <option value={tag.tag} key={tag.tag}>
-                    {tag.label} {formatTag(tag.tag)}
-                </option>
+                <Menu.Item
+                    onSelect={() => exec('insertText', formatTag(tag.tag))}
+                    key={tag.tag}
+                >
+                    <span className="flex items-center justify-between gap-3">
+                        {tag.label}
+                        <code className="text-[10px] text-gray-400">
+                            {formatTag(tag.tag)}
+                        </code>
+                    </span>
+                </Menu.Item>
             ))}
-        </select>
+            {tags.length === 0 ? (
+                <div className="px-2.5 py-2 text-xs text-gray-400">
+                    No tags defined in Body settings.
+                </div>
+            ) : null}
+        </Menu>
     );
 };
 
