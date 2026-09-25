@@ -62,11 +62,18 @@ const Segmented = <T extends string>({
 );
 
 const PreviewDialog: React.FC = () => {
-    const { dialog, setDialog } = useSettings();
+    const { dialog, setDialog, view } = useSettings();
     const mergeTags = useEmail((s) => s.root.properties.mergeTags);
     const html = useHtml();
     const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
     const [sample, setSample] = useState(true);
+
+    // Open in the device the editor is currently showing.
+    useEffect(() => {
+        if (dialog === 'preview') {
+            setDevice(view === 'mobile' ? 'mobile' : 'desktop');
+        }
+    }, [dialog, view]);
     const rendered = sample ? applyMergeTags(html, mergeTags) : html;
 
     return (
@@ -173,7 +180,7 @@ const IssueList: React.FC<{ issues: Issue[] }> = ({ issues }) => {
 };
 
 const ExportDialog: React.FC = () => {
-    const { dialog, setDialog } = useSettings();
+    const { dialog, setDialog, notify } = useSettings();
     const { root, name } = useEmail();
     const [tab, setTab] = useState<'html' | 'json'>('html');
     const [minify, setMinify] = useState(false);
@@ -213,7 +220,12 @@ const ExportDialog: React.FC = () => {
                     </div>
                     <Button
                         onClick={async () => {
-                            if (await copyToClipboard(code)) setCopied(true);
+                            if (await copyToClipboard(code)) {
+                                setCopied(true);
+                                notify(
+                                    `${tab.toUpperCase()} copied to clipboard`,
+                                );
+                            }
                         }}
                         size="sm"
                     >
