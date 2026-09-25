@@ -2,8 +2,8 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
-  '@swc/core': set this to true or false
-  esbuild: set this to true or false
+  '@swc/core': true
+  esbuild: true
 # Hoist type packages so declaration files inside the pnpm store can see them.
 publicHoistPattern:
   - '@types/*'

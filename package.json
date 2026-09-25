@@ -1,10 +1,14 @@
 {
   "name": "email-template-builder",
   "version": "1.0.0",
-  "description": "",
+  "description": "Drag-and-drop email template builder with an AI generation server.",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm -r dev"
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "start": "pnpm --filter server start",
+    "dataset": "pnpm --filter server dataset"
   },
   "keywords": [],
   "author": "",
