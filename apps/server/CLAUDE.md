@@ -14,7 +14,9 @@ generation, a template library with screenshots, and generation history.
 ## Layout
 
 - `src/app.ts` – routes. Every body/param goes through a zod schema in `src/schemas.ts` via `validate()`.
-- `src/ai.ts` – engines: axios call to the Python model service (`AI_URL`), fallback to the rules engine.
+- `src/ai.ts` – engines: axios call to the Python model service (`AI_URL`, default http://127.0.0.1:8000, `off` disables), fallback to the rules engine. `generate()` and `refine()`.
+- `src/refine.ts` – rules-based follow-up edits (tone, colours, header style, add/remove blocks, button/heading/title text, shorten). Also synthesises refinement training pairs.
+- `src/subjects.ts` – subject line / preheader ideas. `src/seed.ts` – starter templates seeded into an empty library. `src/prompts.ts` – prompt formats shared with `ai/serve.py`.
 - `src/generator.ts` – rules engine (prompt analysis + blueprints + copy banks). Also the dataset source.
 - `src/dsl.ts` – the compact template DSL: `parseDsl`, `dslToTree`, `stringifyDsl`.
 - `src/db.ts` – SQLite tables `templates` and `generations`; `DATA_DIR` (default `data/`).
@@ -23,8 +25,10 @@ generation, a template library with screenshots, and generation history.
 
 ## Env
 
-`PORT` (8787), `DATA_DIR`, `AI_URL` (e.g. http://127.0.0.1:8000), `AI_TIMEOUT_MS`,
+Loaded from `.env` when present (see `.env.example`): `PORT` (8787), `DATA_DIR`,
+`AI_URL` (default http://127.0.0.1:8000; `off` = rules only), `AI_TIMEOUT_MS`,
 `CORS_ORIGIN` (comma list), `WEB_DIST` (serves the built web app when present).
+Templates carry a `kind`: `starter` (seeded), `user`, `ai` (saved with a prompt).
 
 ## Rules
 

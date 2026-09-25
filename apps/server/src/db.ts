@@ -34,9 +34,19 @@ CREATE TABLE IF NOT EXISTS generations (
 );
 `);
 
+// Additive migrations for databases created by earlier versions.
+try {
+    db.exec("ALTER TABLE templates ADD COLUMN kind TEXT NOT NULL DEFAULT 'user'");
+} catch {
+    // column already exists
+}
+
+export type TemplateKind = 'starter' | 'user' | 'ai';
+
 export interface TemplateRow {
     id: string;
     name: string;
+    kind: TemplateKind;
     root: CanvasNode;
     prompt: string | null;
     screenshot: string | null;
@@ -62,6 +72,7 @@ type Raw = Record<string, string | number | null>;
 const toTemplate = (r: Raw): TemplateRow => ({
     id: String(r.id),
     name: String(r.name),
+    kind: (String(r.kind ?? 'user') as TemplateKind) || 'user',
     root: JSON.parse(String(r.root)) as CanvasNode,
     prompt: r.prompt === null ? null : String(r.prompt),
     screenshot: r.screenshot === null ? null : String(r.screenshot),
@@ -85,7 +96,7 @@ export const templates = {
         return (
             db
                 .prepare(
-                    'SELECT id, name, prompt, screenshot, created_at, updated_at FROM templates ORDER BY updated_at DESC',
+                    'SELECT id, name, kind, prompt, screenshot, created_at, updated_at FROM templates ORDER BY updated_at DESC',
                 )
                 .all() as Raw[]
         ).map((r) => {
@@ -99,19 +110,25 @@ export const templates = {
             | undefined;
         return row ? toTemplate(row) : null;
     },
+    count(): number {
+        const row = db.prepare('SELECT COUNT(*) AS n FROM templates').get() as Raw;
+        return Number(row.n);
+    },
     create(input: {
         name: string;
         root: CanvasNode;
         prompt?: string | null;
         screenshot?: string | null;
+        kind?: TemplateKind;
     }): TemplateRow {
         const id = nanoid(10);
         const stamp = now();
         db.prepare(
-            'INSERT INTO templates (id, name, root, prompt, screenshot, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO templates (id, name, kind, root, prompt, screenshot, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         ).run(
             id,
             input.name,
+            input.kind ?? (input.prompt ? 'ai' : 'user'),
             JSON.stringify(input.root),
             input.prompt ?? null,
             input.screenshot ?? null,
