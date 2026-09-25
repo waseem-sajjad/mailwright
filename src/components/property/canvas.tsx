@@ -1,7 +1,6 @@
 import { useNodeProps } from '@/hooks';
 import type { CanvasNode } from '@/types';
-import { Divider, Field, Input, SelectBox, Updown } from '@/components/ui';
-import { FONT_FAMILIES } from '@/utils';
+import { Divider, Field, FontSelect, Input, Updown } from '@/components/ui';
 
 import { MergeTagsEditor } from './mergetags';
 import { ColorField } from './shared';
@@ -64,9 +63,8 @@ export const CanvasProperty: React.FC<{ node: CanvasNode }> = ({ node }) => {
             />
             <Divider />
             <Field label="Font Family">
-                <SelectBox
+                <FontSelect
                     onChange={(fontFamily) => set({ fontFamily })}
-                    options={FONT_FAMILIES.filter((f) => f.value !== 'inherit')}
                     value={p.fontFamily}
                 />
             </Field>

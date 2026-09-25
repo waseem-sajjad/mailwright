@@ -27,7 +27,12 @@ import {
     rgbaToCss,
     videoThumbnail,
 } from './helper';
-import { PLACEHOLDER_IMAGE, SOCIAL_NETWORKS } from './factory';
+import {
+    googleFamiliesFor,
+    googleFontsUrl,
+    PLACEHOLDER_IMAGE,
+    SOCIAL_NETWORKS,
+} from './factory';
 
 interface Context {
     canvas: CanvasProperties;
@@ -372,6 +377,18 @@ const renderRow = (row: RowNode, ctx: Context): string => {
     ].join('\n');
 };
 
+/** Every font-family value used by the document. */
+const collectFonts = (root: CanvasNode): string[] => {
+    const values = new Set<string>([root.properties.fontFamily]);
+    const walk = (node: EmailNode) => {
+        const font = node.properties?.fontFamily;
+        if (typeof font === 'string' && font !== 'inherit') values.add(font);
+        node.children.forEach(walk);
+    };
+    walk(root);
+    return [...values];
+};
+
 export interface ExportOptions {
     /** Collapse whitespace between tags. */
     minify?: boolean;
@@ -401,6 +418,15 @@ export const exportHtml = (
         ? ''
         : `background-color:${rgbaToCss(canvas.contentBackgroundColor)};`;
 
+    // Web fonts are progressive enhancement: linked for clients that support
+    // them (Apple Mail, iOS, some Android), hidden from Outlook via the MSO
+    // conditional so it falls back to the stack's system font.
+    const fonts = googleFamiliesFor(collectFonts(root));
+    const fontLinks =
+        fonts.length > 0
+            ? `<!--[if !mso]><!--><link href="${googleFontsUrl(fonts)}" rel="stylesheet" type="text/css" /><style>@import url('${googleFontsUrl(fonts)}');</style><!--<![endif]-->`
+            : '';
+
     const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -410,6 +436,7 @@ export const exportHtml = (
 <meta name="x-apple-disable-message-reformatting" />
 <title>${escapeHtml(canvas.title)}</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+${fontLinks}
 <style>
 html, body { margin: 0 !important; padding: 0 !important; height: 100% !important; width: 100% !important; }
 * { -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }

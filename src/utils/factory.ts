@@ -33,24 +33,129 @@ export const PLACEHOLDER_IMAGE = `data:image/svg+xml;utf8,${encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300"><rect width="600" height="300" fill="#e5e7eb"/><g fill="#9ca3af"><circle cx="230" cy="120" r="28"/><path d="M120 230l110-95 80 70 60-45 110 70z"/></g><text x="300" y="275" text-anchor="middle" font-family="Arial" font-size="18" fill="#6b7280">Drop an image URL in the settings panel</text></svg>',
 )}`;
 
-export const FONT_FAMILIES: { label: string; value: string }[] = [
-    { label: 'Inherit', value: 'inherit' },
-    { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+export interface FontOption {
+    label: string;
+    value: string;
+    /** Google Fonts family name when the font must be loaded from the web. */
+    google?: string;
+    group: 'System' | 'Web fonts';
+}
+
+export const FONT_FAMILIES: FontOption[] = [
+    { label: 'Arial', value: 'Arial, Helvetica, sans-serif', group: 'System' },
     {
         label: 'Helvetica Neue',
         value: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+        group: 'System',
     },
-    { label: 'Georgia', value: 'Georgia, serif' },
-    { label: 'Times New Roman', value: "'Times New Roman', Times, serif" },
-    { label: 'Courier New', value: "'Courier New', Courier, monospace" },
-    { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
-    { label: 'Tahoma', value: 'Tahoma, Geneva, sans-serif' },
-    { label: 'Trebuchet MS', value: "'Trebuchet MS', Helvetica, sans-serif" },
+    { label: 'Verdana', value: 'Verdana, Geneva, sans-serif', group: 'System' },
+    { label: 'Tahoma', value: 'Tahoma, Geneva, sans-serif', group: 'System' },
+    {
+        label: 'Trebuchet MS',
+        value: "'Trebuchet MS', Helvetica, sans-serif",
+        group: 'System',
+    },
     {
         label: 'Lucida Sans',
         value: "'Lucida Sans Unicode', 'Lucida Grande', sans-serif",
+        group: 'System',
+    },
+    { label: 'Georgia', value: 'Georgia, serif', group: 'System' },
+    {
+        label: 'Times New Roman',
+        value: "'Times New Roman', Times, serif",
+        group: 'System',
+    },
+    {
+        label: 'Palatino',
+        value: "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+        group: 'System',
+    },
+    {
+        label: 'Courier New',
+        value: "'Courier New', Courier, monospace",
+        group: 'System',
+    },
+    {
+        label: 'Inter',
+        value: "'Inter', Arial, Helvetica, sans-serif",
+        google: 'Inter',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Roboto',
+        value: "'Roboto', Arial, Helvetica, sans-serif",
+        google: 'Roboto',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Open Sans',
+        value: "'Open Sans', Arial, Helvetica, sans-serif",
+        google: 'Open Sans',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Lato',
+        value: "'Lato', Arial, Helvetica, sans-serif",
+        google: 'Lato',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Montserrat',
+        value: "'Montserrat', Arial, Helvetica, sans-serif",
+        google: 'Montserrat',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Poppins',
+        value: "'Poppins', Arial, Helvetica, sans-serif",
+        google: 'Poppins',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Nunito',
+        value: "'Nunito', Arial, Helvetica, sans-serif",
+        google: 'Nunito',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Source Sans 3',
+        value: "'Source Sans 3', Arial, Helvetica, sans-serif",
+        google: 'Source Sans 3',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Merriweather',
+        value: "'Merriweather', Georgia, serif",
+        google: 'Merriweather',
+        group: 'Web fonts',
+    },
+    {
+        label: 'Playfair Display',
+        value: "'Playfair Display', Georgia, serif",
+        google: 'Playfair Display',
+        group: 'Web fonts',
     },
 ];
+
+/** Google Fonts stylesheet URL for the given family names. */
+export const googleFontsUrl = (families: string[]): string =>
+    `https://fonts.googleapis.com/css2?${families
+        .map(
+            (f) =>
+                `family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;700`,
+        )
+        .join('&')}&display=swap`;
+
+/** Google families needed for a list of CSS font-family values. */
+export const googleFamiliesFor = (values: string[]): string[] => {
+    const found = new Set<string>();
+    values.forEach((value) => {
+        const option = FONT_FAMILIES.find((f) => f.value === value && f.google);
+        if (option?.google) found.add(option.google);
+    });
+    return [...found];
+};
 
 export const COLUMN_LAYOUTS: { label: string; value: ColumnLayout }[] = [
     { label: '1', value: [100] },

@@ -5,10 +5,10 @@ import {
     CheckBox,
     Divider,
     Field,
+    FontSelect,
     SelectBox,
     Updown,
 } from '@/components/ui';
-import { FONT_FAMILIES } from '@/utils';
 
 import { ColorField, PaddingField } from './shared';
 import { TextToolbar } from './toolbar';
@@ -33,10 +33,10 @@ export const TypographyFields: React.FC<{
             </Field>
             <Divider />
             <Field label="Font Family">
-                <SelectBox
+                <FontSelect
                     onChange={(fontFamily) => set({ fontFamily })}
                     value={p.fontFamily}
-                    options={FONT_FAMILIES}
+                    allowInherit
                 />
             </Field>
             <Field label="Font Size">
