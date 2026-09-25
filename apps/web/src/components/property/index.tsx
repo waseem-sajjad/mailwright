@@ -14,6 +14,13 @@ import { HtmlProperty } from './html';
 import { MenuProperty } from './menu';
 import { TextProperty } from './text';
 import { RowProperty } from './row';
+import { TableProperty } from './table';
+import { IconsProperty } from './icons';
+import { ProductProperty } from './product';
+import { QuoteProperty } from './quote';
+import { CouponProperty } from './coupon';
+import { CalloutProperty } from './callout';
+import { FooterProperty } from './footer';
 
 type PropertyPanel = React.FC<{ node: EmailNode }>;
 
@@ -33,4 +40,11 @@ export const propertyPanels: Record<ComponentType, PropertyPanel> = {
     HTML: HtmlProperty as PropertyPanel,
     Menu: MenuProperty as PropertyPanel,
     Spacer: SpacerProperty as PropertyPanel,
+    Table: TableProperty as PropertyPanel,
+    Icons: IconsProperty as PropertyPanel,
+    Product: ProductProperty as PropertyPanel,
+    Quote: QuoteProperty as PropertyPanel,
+    Coupon: CouponProperty as PropertyPanel,
+    Callout: CalloutProperty as PropertyPanel,
+    Footer: FooterProperty as PropertyPanel,
 };
