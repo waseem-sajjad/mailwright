@@ -4,18 +4,28 @@ import type { ViewMode } from '@/types';
 
 export type Dialog = 'none' | 'preview' | 'export' | 'templates';
 
+export interface ToastMessage {
+    message: string;
+    tone: 'success' | 'info';
+    /** Changes on every call so identical messages still re-trigger. */
+    key: number;
+}
+
 interface Settings {
     view: ViewMode;
     hover: string;
     dialog: Dialog;
     dragging: boolean;
     sidebarTab: 'blocks' | 'layers';
+    toast: ToastMessage | null;
 
     setView: (view: ViewMode) => void;
     setHover: (hover: string) => void;
     setDialog: (dialog: Dialog) => void;
     setDragging: (dragging: boolean) => void;
     setSidebarTab: (tab: 'blocks' | 'layers') => void;
+    notify: (message: string, tone?: ToastMessage['tone']) => void;
+    clearToast: () => void;
 }
 
 export const VIEW_WIDTH: Record<ViewMode, string> = {
@@ -30,9 +40,13 @@ export const useSettings = create<Settings>((set) => ({
     dialog: 'none',
     dragging: false,
     sidebarTab: 'blocks',
+    toast: null,
     setHover: (hover) => set({ hover }),
     setView: (view) => set({ view }),
     setDialog: (dialog) => set({ dialog }),
     setDragging: (dragging) => set({ dragging }),
     setSidebarTab: (sidebarTab) => set({ sidebarTab }),
+    notify: (message, tone = 'success') =>
+        set({ toast: { message, tone, key: Date.now() } }),
+    clearToast: () => set({ toast: null }),
 }));

@@ -12,3 +12,4 @@ export * from './field';
 export * from './align';
 export * from './group';
 export * from './modal';
+export * from './menu';

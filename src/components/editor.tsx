@@ -1,5 +1,6 @@
 import { Canvas, Content, Root, Sidebar } from '@/layout';
 import { Dialogs } from '@/components/dialogs';
+import { Toast } from '@/components/toast';
 import { Panel } from '@/components/panel';
 import { useShortcuts } from '@/hooks';
 
@@ -28,6 +29,7 @@ const Editor = () => {
                 </Sidebar.Content>
             </Sidebar>
             <Dialogs />
+            <Toast />
         </Root>
     );
 };
