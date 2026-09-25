@@ -74,7 +74,10 @@ const Trigger: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 const Blocks: React.FC = () => (
-    <Collapsible defaultValue={['layout', 'content']} type="multiple">
+    <Collapsible
+        defaultValue={['layout', 'content', 'section']}
+        type="multiple"
+    >
         <Collapsible.Item value="layout">
             <Trigger>Layout</Trigger>
             <Collapsible.Content className="border-b border-gray-300">
@@ -95,7 +98,7 @@ const Blocks: React.FC = () => (
         </Collapsible.Item>
         <Collapsible.Item value="content">
             <Trigger>Content</Trigger>
-            <Collapsible.Content>
+            <Collapsible.Content className="border-b border-gray-300">
                 <div className="grid grid-cols-3 gap-2 p-2">
                     {blockTypes('content').map((type) => (
                         <Card
@@ -105,6 +108,23 @@ const Blocks: React.FC = () => (
                         />
                     ))}
                 </div>
+            </Collapsible.Content>
+        </Collapsible.Item>
+        <Collapsible.Item value="section">
+            <Trigger>Sections</Trigger>
+            <Collapsible.Content>
+                <div className="grid grid-cols-3 gap-2 p-2">
+                    {blockTypes('section').map((type) => (
+                        <Card
+                            icon={blockMeta[type].icon}
+                            name={type}
+                            key={type}
+                        />
+                    ))}
+                </div>
+                <p className="px-3 pb-3 text-[11px] text-gray-400">
+                    Ready-made pieces built from email-safe tables.
+                </p>
             </Collapsible.Content>
         </Collapsible.Item>
     </Collapsible>

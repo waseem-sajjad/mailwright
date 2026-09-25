@@ -16,7 +16,14 @@ export type ComponentType =
     | 'Social'
     | 'HTML'
     | 'Menu'
-    | 'Spacer';
+    | 'Spacer'
+    | 'Table'
+    | 'Icons'
+    | 'Product'
+    | 'Quote'
+    | 'Coupon'
+    | 'Callout'
+    | 'Footer';
 
 /** Types that live inside a Column. */
 export type ContentType = Exclude<ComponentType, 'Canvas' | 'Row' | 'Column'>;

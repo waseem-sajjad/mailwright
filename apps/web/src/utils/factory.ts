@@ -1,5 +1,6 @@
 import type {
     ButtonProperties,
+    CalloutProperties,
     CanvasNode,
     CanvasProperties,
     ColumnLayout,
@@ -7,21 +8,27 @@ import type {
     ColumnProperties,
     ComponentType,
     ContentType,
+    CouponProperties,
     DividerProperties,
     EmailNode,
+    FooterProperties,
     HeadingProperties,
     HtmlProperties,
+    IconsProperties,
     ImageProperties,
     ListProperties,
     MenuProperties,
     MergeTag,
     Padding,
+    ProductProperties,
+    QuoteProperties,
     RowNode,
     RowProperties,
     SocialItem,
     SocialNetwork,
     SocialProperties,
     SpacerProperties,
+    TableProperties,
     TextProperties,
     VideoProperties,
 } from '@/types';
@@ -372,6 +379,148 @@ export const spacerDefaults = (): SpacerProperties => ({
     height: 30,
 });
 
+export const tableDefaults = (): TableProperties => ({
+    rows: [
+        ['Item', 'Qty', 'Price'],
+        ['Runner Pro', '1', '$48.00'],
+        ['Weekend Tote', '2', '$96.00'],
+    ],
+    headerRow: true,
+    headerBackground: rgb(243, 244, 246),
+    headerColor: dark,
+    stripe: false,
+    stripeColor: rgb(249, 250, 251),
+    borderColor: rgb(229, 231, 235),
+    borderWidth: 1,
+    cellPadding: 8,
+    fontSize: 13,
+    align: 'left',
+    width: 100,
+    padding: uniformPadding(10),
+    paddingLink: true,
+});
+
+export const iconItem = (icon: string, title: string, text: string) => ({
+    id: newId(),
+    icon,
+    iconUrl: '',
+    title,
+    text,
+});
+
+export const iconsDefaults = (): IconsProperties => ({
+    items: [
+        iconItem(
+            '✓',
+            'Fast setup',
+            'Connect your account in under two minutes.',
+        ),
+        iconItem(
+            '★',
+            'Loved by teams',
+            'Rated 4.9 out of 5 by 2,000 customers.',
+        ),
+        iconItem(
+            '♥',
+            'Friendly support',
+            'Real people, replying within the hour.',
+        ),
+    ],
+    layout: 'vertical',
+    iconSize: 36,
+    iconBackground: rgb(219, 234, 254),
+    iconColor: rgb(37, 99, 235),
+    iconShape: 'circle',
+    fontSize: 14,
+    titleWeight: 'bold',
+    gap: 12,
+    align: 'left',
+    padding: uniformPadding(10),
+    paddingLink: true,
+});
+
+export const productDefaults = (): ProductProperties => ({
+    image: '',
+    imageAlt: 'Product image',
+    title: 'Product name',
+    description: 'A short description that makes the product irresistible.',
+    price: '$48.00',
+    oldPrice: '$80.00',
+    buttonText: 'Buy now',
+    buttonHref: 'https://example.com/product',
+    buttonBackground: rgb(37, 99, 235),
+    buttonColor: white,
+    layout: 'vertical',
+    imageWidth: 40,
+    align: 'center',
+    backgroundColor: transparent,
+    border: { style: 'none', color: rgb(229, 231, 235), width: 1, radius: 8 },
+    fontSize: 14,
+    padding: uniformPadding(10),
+    paddingLink: true,
+});
+
+export const quoteDefaults = (): QuoteProperties => ({
+    text: 'This tool cut our newsletter production time in half. I cannot imagine going back.',
+    author: 'Jordan Lee',
+    role: 'Head of Marketing, ACME',
+    avatar: '',
+    rating: 5,
+    showMarks: true,
+    italic: true,
+    accentColor: rgb(37, 99, 235),
+    backgroundColor: rgb(249, 250, 251),
+    color: dark,
+    inheritColor: true,
+    fontSize: 16,
+    align: 'left',
+    padding: uniformPadding(10),
+    paddingLink: true,
+});
+
+export const couponDefaults = (): CouponProperties => ({
+    label: 'Use code at checkout',
+    code: 'SAVE40',
+    description: 'Valid until Sunday midnight on all orders.',
+    backgroundColor: rgb(255, 251, 235),
+    borderColor: rgb(245, 158, 11),
+    codeColor: rgb(180, 83, 9),
+    codeBackground: white,
+    codeSize: 24,
+    align: 'center',
+    padding: uniformPadding(10),
+    paddingLink: true,
+});
+
+export const calloutDefaults = (): CalloutProperties => ({
+    icon: 'ℹ️',
+    title: 'Heads up',
+    text: 'Your plan renews on the 1st. Update your billing details before then to avoid interruption.',
+    backgroundColor: rgb(239, 246, 255),
+    accentColor: rgb(37, 99, 235),
+    color: dark,
+    radius: 6,
+    fontSize: 14,
+    padding: uniformPadding(10),
+    paddingLink: true,
+});
+
+export const footerDefaults = (): FooterProperties => ({
+    company: 'ACME Inc',
+    address: '123 Example Street, Sydney NSW 2000, Australia',
+    text: 'You are receiving this email because you signed up at acme.com.',
+    unsubscribeText: 'Unsubscribe',
+    unsubscribeHref: '{{unsubscribe_url}}',
+    preferencesText: 'Email preferences',
+    preferencesHref: 'https://example.com/preferences',
+    fontSize: 11,
+    color: rgb(107, 114, 128),
+    linkColor: rgb(107, 114, 128),
+    align: 'center',
+    padding: uniformPadding(16),
+    paddingLink: true,
+});
+
 const contentDefaults: Record<ContentType, () => Record<string, unknown>> = {
     Heading: headingDefaults,
     Text: textDefaults,
@@ -384,6 +533,13 @@ const contentDefaults: Record<ContentType, () => Record<string, unknown>> = {
     HTML: htmlDefaults,
     Menu: menuDefaults,
     Spacer: spacerDefaults,
+    Table: tableDefaults,
+    Icons: iconsDefaults,
+    Product: productDefaults,
+    Quote: quoteDefaults,
+    Coupon: couponDefaults,
+    Callout: calloutDefaults,
+    Footer: footerDefaults,
 };
 
 export const createColumn = (width = 100): ColumnNode => ({

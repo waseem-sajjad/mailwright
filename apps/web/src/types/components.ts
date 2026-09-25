@@ -1,17 +1,24 @@
 import type { EmailNode } from './common';
 import type {
     ButtonProperties,
+    CalloutProperties,
     CanvasProperties,
     ColumnProperties,
+    CouponProperties,
     DividerProperties,
+    FooterProperties,
     HeadingProperties,
     HtmlProperties,
+    IconsProperties,
     ImageProperties,
     ListProperties,
     MenuProperties,
+    ProductProperties,
+    QuoteProperties,
     RowProperties,
     SocialProperties,
     SpacerProperties,
+    TableProperties,
     TextProperties,
     VideoProperties,
 } from './properties';
@@ -30,6 +37,13 @@ export type SocialNode = EmailNode<SocialProperties>;
 export type HtmlNode = EmailNode<HtmlProperties>;
 export type MenuNode = EmailNode<MenuProperties>;
 export type SpacerNode = EmailNode<SpacerProperties>;
+export type TableNode = EmailNode<TableProperties>;
+export type IconsNode = EmailNode<IconsProperties>;
+export type ProductNode = EmailNode<ProductProperties>;
+export type QuoteNode = EmailNode<QuoteProperties>;
+export type CouponNode = EmailNode<CouponProperties>;
+export type CalloutNode = EmailNode<CalloutProperties>;
+export type FooterNode = EmailNode<FooterProperties>;
 
 /** A saved template document. */
 export interface EmailDocument {

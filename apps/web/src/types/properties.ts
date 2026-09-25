@@ -188,6 +188,128 @@ export type SpacerProperties = Visibility & {
     height: number;
 };
 
+export type TableProperties = Visibility & {
+    rows: string[][];
+    headerRow: boolean;
+    headerBackground: RGBColor;
+    headerColor: RGBColor;
+    stripe: boolean;
+    stripeColor: RGBColor;
+    borderColor: RGBColor;
+    borderWidth: number;
+    cellPadding: number;
+    fontSize: number;
+    align: Align;
+    width: number;
+    padding: Padding;
+    paddingLink: boolean;
+};
+
+export type IconItem = {
+    id: string;
+    icon: string;
+    iconUrl: string;
+    title: string;
+    text: string;
+};
+
+export type IconsProperties = Visibility & {
+    items: IconItem[];
+    layout: 'vertical' | 'horizontal';
+    iconSize: number;
+    iconBackground: RGBColor;
+    iconColor: RGBColor;
+    iconShape: 'circle' | 'rounded' | 'square';
+    fontSize: number;
+    titleWeight: 'normal' | 'bold';
+    gap: number;
+    align: Align;
+    padding: Padding;
+    paddingLink: boolean;
+};
+
+export type ProductProperties = Visibility & {
+    image: string;
+    imageAlt: string;
+    title: string;
+    description: string;
+    price: string;
+    oldPrice: string;
+    buttonText: string;
+    buttonHref: string;
+    buttonBackground: RGBColor;
+    buttonColor: RGBColor;
+    layout: 'vertical' | 'horizontal';
+    imageWidth: number;
+    align: Align;
+    backgroundColor: RGBColor;
+    border: Border;
+    fontSize: number;
+    padding: Padding;
+    paddingLink: boolean;
+};
+
+export type QuoteProperties = Visibility & {
+    text: string;
+    author: string;
+    role: string;
+    avatar: string;
+    rating: number;
+    showMarks: boolean;
+    italic: boolean;
+    accentColor: RGBColor;
+    backgroundColor: RGBColor;
+    color: RGBColor;
+    inheritColor: boolean;
+    fontSize: number;
+    align: Align;
+    padding: Padding;
+    paddingLink: boolean;
+};
+
+export type CouponProperties = Visibility & {
+    label: string;
+    code: string;
+    description: string;
+    backgroundColor: RGBColor;
+    borderColor: RGBColor;
+    codeColor: RGBColor;
+    codeBackground: RGBColor;
+    codeSize: number;
+    align: Align;
+    padding: Padding;
+    paddingLink: boolean;
+};
+
+export type CalloutProperties = Visibility & {
+    icon: string;
+    title: string;
+    text: string;
+    backgroundColor: RGBColor;
+    accentColor: RGBColor;
+    color: RGBColor;
+    radius: number;
+    fontSize: number;
+    padding: Padding;
+    paddingLink: boolean;
+};
+
+export type FooterProperties = Visibility & {
+    company: string;
+    address: string;
+    text: string;
+    unsubscribeText: string;
+    unsubscribeHref: string;
+    preferencesText: string;
+    preferencesHref: string;
+    fontSize: number;
+    color: RGBColor;
+    linkColor: RGBColor;
+    align: Align;
+    padding: Padding;
+    paddingLink: boolean;
+};
+
 export type PropertiesOf = {
     Canvas: CanvasProperties;
     Row: RowProperties;
@@ -203,4 +325,11 @@ export type PropertiesOf = {
     HTML: HtmlProperties;
     Menu: MenuProperties;
     Spacer: SpacerProperties;
+    Table: TableProperties;
+    Icons: IconsProperties;
+    Product: ProductProperties;
+    Quote: QuoteProperties;
+    Coupon: CouponProperties;
+    Callout: CalloutProperties;
+    Footer: FooterProperties;
 };
