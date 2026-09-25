@@ -9,3 +9,4 @@ export * from './mergeTags';
 export * from './library';
 export * from './lint';
 export * from './selection';
+export * from './mergeTagDom';

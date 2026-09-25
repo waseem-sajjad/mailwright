@@ -8,7 +8,7 @@ import {
     Unlink,
 } from 'lucide-react';
 
-import { execOnEditable, formatTag } from '@/utils';
+import { execOnEditable, formatTag, mergeTagChip, ZWSP } from '@/utils';
 import { Menu } from '@/components/ui';
 import { useEmail, useSettings } from '@/hooks';
 
@@ -60,7 +60,9 @@ const MergeTagPicker: React.FC = () => {
         >
             {tags.map((tag) => (
                 <Menu.Item
-                    onSelect={() => exec('insertText', formatTag(tag.tag))}
+                    onSelect={() =>
+                        exec('insertHTML', mergeTagChip(tag.tag, tags) + ZWSP)
+                    }
                     key={tag.tag}
                 >
                     <span className="flex items-center justify-between gap-3">

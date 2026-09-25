@@ -1,6 +1,8 @@
 import type { CanvasProperties, MenuNode } from '@/types';
 import { paddingCss, rgbaToCss } from '@/utils';
 
+import { TagText } from './tagtext';
+
 export const Menu: React.FC<{ node: MenuNode; canvas: CanvasProperties }> = ({
     node,
     canvas,
@@ -30,7 +32,7 @@ export const Menu: React.FC<{ node: MenuNode; canvas: CanvasProperties }> = ({
                         key={item.id}
                     >
                         <span style={{ padding: paddingCss(p.itemPadding) }}>
-                            {item.text || 'Link'}
+                            <TagText text={item.text || 'Link'} />
                         </span>
                         {p.separator &&
                         p.layout === 'horizontal' &&

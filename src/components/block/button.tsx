@@ -1,6 +1,8 @@
 import type { ButtonNode, CanvasProperties } from '@/types';
 import { borderCss, paddingCss, rgbaToCss } from '@/utils';
 
+import { TagText } from './tagtext';
+
 export const Button: React.FC<{
     node: ButtonNode;
     canvas: CanvasProperties;
@@ -30,7 +32,7 @@ export const Button: React.FC<{
                     cursor: 'default',
                 }}
             >
-                {p.text || 'Button'}
+                <TagText text={p.text || 'Button'} />
             </span>
         </div>
     );

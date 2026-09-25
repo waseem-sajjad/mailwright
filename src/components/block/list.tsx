@@ -1,5 +1,5 @@
 import type { CanvasProperties, ListNode } from '@/types';
-import { paddingCss, rgbaToCss } from '@/utils';
+import { decorateTags, paddingCss, rgbaToCss } from '@/utils';
 
 export const List: React.FC<{ node: ListNode; canvas: CanvasProperties }> = ({
     node,
@@ -7,6 +7,7 @@ export const List: React.FC<{ node: ListNode; canvas: CanvasProperties }> = ({
 }) => {
     const p = node.properties;
     const Tag = p.ordered ? 'ol' : 'ul';
+    const tags = canvas.mergeTags;
     return (
         <div style={{ padding: paddingCss(p.padding) }}>
             <Tag
@@ -30,7 +31,9 @@ export const List: React.FC<{ node: ListNode; canvas: CanvasProperties }> = ({
                         key={index}
                         style={{ margin: '0 0 4px 0' }}
                         // eslint-disable-next-line react/no-danger
-                        dangerouslySetInnerHTML={{ __html: item }}
+                        dangerouslySetInnerHTML={{
+                            __html: decorateTags(item, tags),
+                        }}
                     />
                 ))}
             </Tag>
