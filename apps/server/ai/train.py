@@ -29,6 +29,14 @@ from transformers import (
 )
 
 PREFIX = "Generate an email template.\nRequest: "
+# Refinement rows from the dataset script already carry their own prefix
+# ("Edit an email template.\nCurrent: ... Instruction: ..."), matching what
+# serve.py sends at inference time, so only generation rows get PREFIX.
+REFINE_PREFIX = "Edit an email template."
+
+
+def with_prefix(prompt: str) -> str:
+    return prompt if prompt.startswith(REFINE_PREFIX) else PREFIX + prompt
 # Refinement examples carry the current DSL in the input, so allow ~640 tokens.
 MAX_INPUT = 640
 MAX_OUTPUT = 512
@@ -84,7 +92,7 @@ def main() -> None:
 
     def encode(batch):
         inputs = tokenizer(
-            [PREFIX + p for p in batch["prompt"]],
+            [with_prefix(p) for p in batch["prompt"]],
             max_length=MAX_INPUT,
             truncation=True,
         )
