@@ -1,0 +1,93 @@
+---
+name: email-builder-dev
+description: Architecture, conventions and the add-a-block checklist for this email template builder (React 19 + Zustand + dnd-kit + Tailwind 4). Load before changing anything under src/.
+---
+
+# Email builder development
+
+## Commands
+
+```bash
+pnpm dev          # Vite dev server on http://localhost:3000
+pnpm build        # tsc -b && vite build  (must pass before finishing)
+pnpm lint         # eslint . (must exit 0; run `npx eslint . --fix` then `npx prettier --write "src/**/*.{ts,tsx}"`)
+```
+
+There is no test runner. For logic that does not touch the DOM (tree ops,
+store, export) bundle a script with pnpm's esbuild and run it in Node:
+
+```bash
+ESB=$(ls -d node_modules/.pnpm/esbuild@*/node_modules/esbuild/bin/esbuild | head -1)
+$ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=out.mjs && node out.mjs
+```
+
+## Data model
+
+- The document is a plain serialisable tree of `EmailNode { id, type, properties, children }`
+  (`src/types/common.ts`). No classes, no parent pointers. Always create new
+  objects; never mutate a node in place.
+- Hierarchy is fixed: `Canvas → Row → Column → content`. Content types are
+  everything except Canvas/Row/Column (`ContentType`).
+- All tree operations live in `src/utils/tree.ts` (find, insert, remove,
+  move, duplicate, mapNode). Use them instead of hand-rolling recursion.
+- Defaults for every block are factory functions in `src/utils/factory.ts`.
+  Row layouts are percentage arrays (`COLUMN_LAYOUTS`); `applyLayout` reshapes
+  a row's columns while preserving content.
+
+## State (`src/hooks/useEmail.ts`)
+
+- Single Zustand store: `root`, `activeId`, `past`/`future` (undo/redo), `name`.
+- `updateProperties(id, partial, { transient: true })` for keystroke-level or
+  drag-level edits: consecutive transient edits collapse into ONE undo entry
+  until `commit()` is called (call it on blur / popover close).
+- Autosave to `localStorage` is a debounced `subscribe` at the bottom of the
+  file; nothing else should write storage.
+- In components use `useNodeProps(node)` (`src/hooks/useNodeProps.ts`) which
+  gives `{ p, set, setTransient, commit }` bound to that node.
+
+## Drag and drop (`src/components/dnd.tsx`)
+
+- Draggables carry `DragData`: `{ type: 'card', name, kind }` from the palette
+  or `{ type: 'block', id, kind }` from a block's grip handle.
+- Drop targets are `<Slot kind parentId index>` components. `kind` is
+  `'row' | 'column' | 'content'` and MUST match the drag's kind; the custom
+  collision detection filters on it. Column cards drop onto row slots and call
+  `addColumn`.
+- `useSettings().dragging` is true during a drag; the block toolbar hides then.
+
+## Rendering
+
+- Canvas blocks: `src/components/block/*.tsx`, dispatched by `block/content.tsx`
+  and wrapped in `Container` (hover/active outline, toolbar).
+- Heading/Text use `block/editable.tsx` (contentEditable). The DOM is the source
+  of truth while focused; never pass `dangerouslySetInnerHTML` to it.
+- Settings panels: `src/components/property/*.tsx`, registered in
+  `property/index.tsx`. Panels are keyed by node id so local state resets on
+  selection change.
+- HTML export: `src/utils/export.ts`. Follow the `email-html-compat` skill for
+  anything you add there. Preview uses the same exporter in a sandboxed iframe.
+
+## Add a new block type (checklist)
+
+1. `src/types/common.ts`: add the name to `ComponentType`.
+2. `src/types/properties.ts`: add `XProperties` and register it in `PropertiesOf`.
+3. `src/types/components.ts`: add `XNode`.
+4. `src/utils/factory.ts`: `xDefaults()` and an entry in `contentDefaults`.
+5. `src/components/blocks.tsx`: icon, label and group in `blockMeta`.
+6. `src/components/block/x.tsx`: editor renderer; add a `case` in `block/content.tsx`.
+7. `src/components/property/x.tsx`: settings panel; register in `property/index.tsx`.
+8. `src/utils/export.ts`: `renderX()` and a `case` in `renderContent`.
+9. Optionally use it in `src/utils/templates.ts`.
+10. `pnpm lint && pnpm build`.
+
+## Lint conventions that bite
+
+- 4-space indent, single quotes, trailing commas, 80 cols (prettier owns formatting;
+  prettier configs are LAST in `eslint.config.js` so they override the style rules).
+- `no-nested-ternary`, `no-plusplus`, `no-shadow`, `react/no-array-index-key`
+  (add a justified `eslint-disable-next-line` only when the list is truly index-keyed),
+  `jsx-a11y/*` (interactive `div`s need `aria-hidden` or real roles; a component
+  named `Link` is treated as an anchor, so alias icon imports).
+- `@typescript-eslint/consistent-type-imports`: use `import type` for types.
+- `react-refresh/only-export-components`: keep hooks/helpers out of `.tsx` files
+  that export components (put hooks in `src/hooks`).

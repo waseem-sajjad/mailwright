@@ -1,0 +1,32 @@
+# Email Template Builder
+
+Drag-and-drop email designer that exports table-based, inbox-safe HTML.
+Vite + React 19 + TypeScript + Zustand + dnd-kit + Tailwind 4. Package manager is pnpm.
+
+## Commands
+
+- `pnpm dev` – dev server on port 3000
+- `pnpm build` – `tsc -b && vite build`; must pass
+- `pnpm lint` – must exit 0; fix with `npx eslint . --fix && npx prettier --write "src/**/*.{ts,tsx}"`
+
+## Layout
+
+- `src/types` – `EmailNode` tree types and every block's properties
+- `src/utils` – `tree.ts` (immutable tree ops), `factory.ts` (defaults, layouts),
+  `export.ts` (HTML exporter), `templates.ts` (starter templates), `storage.ts`
+- `src/hooks` – `useEmail` (document + undo/redo + autosave), `useSettings`
+  (view, dialogs, drag state), `useShortcuts`, `useNodeProps`
+- `src/components/block` – canvas renderers; `property` – settings panels;
+  `ui` – primitives; `dnd.tsx`, `slot.tsx`, `container.tsx` – drag/drop plumbing
+- `src/layout` – shell: sidebars, header toolbar, canvas
+
+## Skills
+
+- `email-builder-dev` – architecture, store rules, add-a-block checklist, lint gotchas. Load before editing `src/`.
+- `email-html-compat` – rules for `export.ts` so output survives Outlook and Gmail.
+
+## Rules
+
+- Never mutate nodes; use `src/utils/tree.ts` helpers.
+- Keystroke-level edits go through `setTransient` + `commit()` so undo stays sane.
+- Prettier owns formatting; keep its configs last in `eslint.config.js`.
