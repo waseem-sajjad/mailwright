@@ -13,6 +13,13 @@ import { Html } from './html';
 import { List } from './list';
 import { Menu } from './menu';
 import { Text } from './text';
+import { Table } from './table';
+import { Icons } from './icons';
+import { Product } from './product';
+import { Quote } from './quote';
+import { Coupon } from './coupon';
+import { Callout } from './callout';
+import { Footer } from './footer';
 
 interface ContentProps {
     node: EmailNode;
@@ -43,6 +50,20 @@ const render = (node: EmailNode, canvas: CanvasProperties) => {
             return <Menu canvas={canvas} node={node} />;
         case 'Spacer':
             return <Spacer node={node} />;
+        case 'Table':
+            return <Table canvas={canvas} node={node} />;
+        case 'Icons':
+            return <Icons canvas={canvas} node={node} />;
+        case 'Product':
+            return <Product canvas={canvas} node={node} />;
+        case 'Quote':
+            return <Quote canvas={canvas} node={node} />;
+        case 'Coupon':
+            return <Coupon canvas={canvas} node={node} />;
+        case 'Callout':
+            return <Callout canvas={canvas} node={node} />;
+        case 'Footer':
+            return <Footer canvas={canvas} node={node} />;
         default:
             return null;
     }
