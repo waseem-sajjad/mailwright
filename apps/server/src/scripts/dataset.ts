@@ -17,6 +17,8 @@ import {
     generateDsl,
     mulberry32,
 } from '../generator.ts';
+import { REFINE_INSTRUCTIONS, refineDsl } from '../refine.ts';
+import { REFINE_PREFIX } from '../prompts.ts';
 
 const TYPES: EmailType[] = [
     'welcome', 'newsletter', 'promo', 'event', 'announcement',
@@ -101,6 +103,7 @@ const sample = (rnd: () => number) => {
 };
 
 const count = Number(process.env.COUNT ?? 4000);
+const refineShare = Number(process.env.REFINE_SHARE ?? 0.25);
 const rnd = mulberry32(Number(process.env.SEED ?? 42));
 const rows: { prompt: string; dsl: string }[] = [];
 const seen = new Set<string>();
@@ -110,6 +113,14 @@ while (rows.length < count) {
     seen.add(row.prompt);
     if (parseDsl(row.dsl).rows.length === 0) continue;
     rows.push(row);
+    // Refinement pair: "edit this template" → edited DSL.
+    if (rnd() < refineShare) {
+        const instruction = pick(REFINE_INSTRUCTIONS, rnd);
+        const refined = refineDsl(row.dsl, instruction, { prompt: row.prompt, seed: Math.floor(rnd() * 1e9) });
+        if (refined.dsl !== row.dsl) {
+            rows.push({ prompt: REFINE_PREFIX(row.dsl, instruction), dsl: refined.dsl });
+        }
+    }
 }
 
 const approved = generations.approved();

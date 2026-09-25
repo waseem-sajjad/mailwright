@@ -17,6 +17,8 @@ from pydantic import BaseModel
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 PREFIX = "Generate an email template.\nRequest: "
+REFINE_PREFIX = "Edit an email template.\nCurrent:\n{dsl}\nInstruction: {instruction}"
+MAX_INPUT = 640
 MODEL_DIR = os.environ.get("MODEL_DIR", "models/template-t5")
 MAX_NEW_TOKENS = int(os.environ.get("MAX_NEW_TOKENS", "512"))
 
@@ -32,9 +34,14 @@ print(f"model {MODEL_DIR} loaded on {DEVICE}")
 class GenerateRequest(BaseModel):
     prompt: str
     options: dict | None = None
+    mode: str = "generate"
+    current: str | None = None
+    instruction: str | None = None
 
 
 def build_prompt(req: GenerateRequest) -> str:
+    if req.mode == "refine" and req.current and req.instruction:
+        return REFINE_PREFIX.format(dsl=req.current.strip(), instruction=req.instruction.strip())
     text = req.prompt.strip()
     options = req.options or {}
     hints = []
@@ -56,7 +63,7 @@ def health() -> dict:
 
 @app.post("/generate")
 def generate(req: GenerateRequest) -> dict:
-    inputs = tokenizer(build_prompt(req), return_tensors="pt", truncation=True, max_length=160).to(DEVICE)
+    inputs = tokenizer(build_prompt(req), return_tensors="pt", truncation=True, max_length=MAX_INPUT).to(DEVICE)
     with torch.inference_mode():
         output = model.generate(
             **inputs,

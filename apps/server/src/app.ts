@@ -7,9 +7,11 @@ import express, { type Request, type Response } from 'express';
 import type { CanvasNode } from '@/types';
 import { exportHtml, normalizeNode } from '@/utils';
 
-import { generate, modelStatus } from './ai.ts';
+import { generate, modelStatus, refine } from './ai.ts';
 import { generations, templates } from './db.ts';
 import { generateDsl } from './generator.ts';
+import { suggestSubjects } from './subjects.ts';
+import { seedStarters } from './seed.ts';
 import { removeScreenshot, saveScreenshot, screenshotFile } from './screenshot.ts';
 import { dslToTree, parseDsl } from './dsl.ts';
 import {
@@ -17,10 +19,13 @@ import {
     feedbackBody,
     generateBody,
     idParam,
+    refineBody,
+    subjectsBody,
     templateCreateBody,
     templateUpdateBody,
     validate,
     type GenerateBody,
+    type RefineBody,
     type TemplateCreateBody,
     type TemplateUpdateBody,
 } from './schemas.ts';
@@ -30,6 +35,7 @@ const paramId = (req: Request): string => String(req.params.id);
 
 export const createApp = () => {
     const app = express();
+    seedStarters();
     app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') ?? true }));
     app.use(express.json({ limit: '25mb' }));
 
@@ -64,6 +70,35 @@ export const createApp = () => {
             root: result.root,
             html: exportHtml(result.root),
         });
+    });
+
+    /** Follow-up instruction applied to a previous result (chat refinement). */
+    app.post('/api/ai/refine', validate(refineBody), async (req: Request, res: Response) => {
+        const { prompt, dsl, instruction, options } = req.body as RefineBody;
+        const result = await refine(prompt, dsl, instruction, options);
+        const saved = generations.create({
+            prompt: `${prompt}\n→ ${instruction}`,
+            options: { ...options, refine: true, instruction },
+            dsl: result.dsl,
+            root: result.root,
+            engine: result.engine,
+        });
+        res.json({
+            id: saved.id,
+            name: result.root.properties.title,
+            engine: result.engine,
+            model: result.model,
+            dsl: result.dsl,
+            root: result.root,
+            html: exportHtml(result.root),
+            applied: result.applied,
+        });
+    });
+
+    /** Subject line and preheader ideas for a brief. */
+    app.post('/api/ai/subjects', validate(subjectsBody), (req, res) => {
+        const { prompt, options } = req.body as GenerateBody;
+        res.json(suggestSubjects(prompt, options));
     });
 
     /** Re-expand edited DSL without calling the model. */
@@ -155,6 +190,21 @@ export const createApp = () => {
             return;
         }
         res.json(row);
+    });
+
+    app.post('/api/templates/:id/duplicate', validate(idParam, 'params'), (req, res) => {
+        const source = templates.get(paramId(req));
+        if (!source) {
+            res.status(404).json({ error: 'not found' });
+            return;
+        }
+        const copy = templates.create({
+            name: `${source.name} (copy)`,
+            root: source.root,
+            prompt: source.prompt,
+            kind: 'user',
+        });
+        res.status(201).json(copy);
     });
 
     app.delete('/api/templates/:id', validate(idParam, 'params'), (req, res) => {

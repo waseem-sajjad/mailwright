@@ -10,6 +10,7 @@ import { normalizeNode } from '@/utils';
 
 import { dslToTree, parseDsl } from './dsl.ts';
 import { generateDsl, type GenerateOptions } from './generator.ts';
+import { refineDsl } from './refine.ts';
 
 export type Engine = 'model' | 'rules';
 
@@ -20,7 +21,8 @@ export interface GenerationResult {
     model: string | null;
 }
 
-const AI_URL = process.env.AI_URL ?? '';
+/** The Python service (ai/serve.py) defaults to port 8000; AI_URL overrides it. */
+export const AI_URL = (process.env.AI_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
 const AI_TIMEOUT = Number(process.env.AI_TIMEOUT_MS ?? 60000);
 
 /** Client for the Python model service (ai/serve.py). */
@@ -34,7 +36,7 @@ let modelInfo: { name: string | null; checkedAt: number; ok: boolean } | null = 
 
 /** Cached health probe of the Python model service. */
 export const modelStatus = async (): Promise<{ ok: boolean; name: string | null }> => {
-    if (!AI_URL) return { ok: false, name: null };
+    if (process.env.AI_URL === 'off') return { ok: false, name: null };
     if (modelInfo && Date.now() - modelInfo.checkedAt < 30000) {
         return { ok: modelInfo.ok, name: modelInfo.name };
     }
@@ -52,6 +54,7 @@ export const modelStatus = async (): Promise<{ ok: boolean; name: string | null 
 const askModel = async (
     prompt: string,
     options: GenerateOptions,
+    refine?: { dsl: string; instruction: string },
 ): Promise<string | null> => {
     const status = await modelStatus();
     if (!status.ok) return null;
@@ -59,6 +62,9 @@ const askModel = async (
         const { data } = await modelClient.post<{ dsl?: string }>('/generate', {
             prompt,
             options,
+            mode: refine ? 'refine' : 'generate',
+            current: refine?.dsl,
+            instruction: refine?.instruction,
         });
         return data.dsl?.trim() || null;
     } catch (error) {
@@ -93,5 +99,37 @@ export const generate = async (
         root: normalizeNode(dslToTree(parseDsl(dsl))) as CanvasNode,
         engine: 'rules',
         model: null,
+    };
+};
+
+export interface RefineOutcome extends GenerationResult {
+    applied: string[];
+}
+
+/** Applies a follow-up instruction to an existing DSL document. */
+export const refine = async (
+    prompt: string,
+    dsl: string,
+    instruction: string,
+    options: GenerateOptions = {},
+): Promise<RefineOutcome> => {
+    const fromModel = await askModel(prompt, options, { dsl, instruction });
+    if (fromModel && usable(fromModel) && fromModel !== dsl) {
+        const status = await modelStatus();
+        return {
+            dsl: fromModel,
+            root: normalizeNode(dslToTree(parseDsl(fromModel))) as CanvasNode,
+            engine: 'model',
+            model: status.name,
+            applied: ['Updated by the fine-tuned model'],
+        };
+    }
+    const result = refineDsl(dsl, instruction, { prompt, options });
+    return {
+        dsl: result.dsl,
+        root: normalizeNode(dslToTree(parseDsl(result.dsl))) as CanvasNode,
+        engine: 'rules',
+        model: null,
+        applied: result.applied,
     };
 };

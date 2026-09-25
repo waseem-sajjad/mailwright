@@ -40,6 +40,18 @@ export const generateBody = z.object({
     options: generateOptions.default({}),
 });
 
+export const refineBody = z.object({
+    prompt: z.string().trim().min(1).max(1000),
+    dsl: z.string().trim().min(1).max(20000),
+    instruction: z.string().trim().min(2, 'Tell me what to change.').max(500),
+    options: generateOptions.default({}),
+});
+
+export const subjectsBody = z.object({
+    prompt: z.string().trim().min(3).max(1000),
+    options: generateOptions.default({}),
+});
+
 export const expandBody = z.object({
     dsl: z.string().trim().min(1).max(20000),
 });
@@ -72,6 +84,7 @@ export const templateUpdateBody = z
 export const idParam = z.object({ id: z.string().regex(/^[\w-]{4,32}$/) });
 
 export type GenerateBody = z.infer<typeof generateBody>;
+export type RefineBody = z.infer<typeof refineBody>;
 export type TemplateCreateBody = z.infer<typeof templateCreateBody>;
 export type TemplateUpdateBody = z.infer<typeof templateUpdateBody>;
 

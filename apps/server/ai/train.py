@@ -29,7 +29,8 @@ from transformers import (
 )
 
 PREFIX = "Generate an email template.\nRequest: "
-MAX_INPUT = 160
+# Refinement examples carry the current DSL in the input, so allow ~640 tokens.
+MAX_INPUT = 640
 MAX_OUTPUT = 512
 
 
