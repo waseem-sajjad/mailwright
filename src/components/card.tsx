@@ -1,26 +1,28 @@
 import { useDraggable } from '@dnd-kit/core';
 
+import type { ComponentType, DragCardData } from '@/types';
 import { cn } from '@/utils';
 
 export type CardProps = {
-    component?: 'component' | 'layout';
     cardType?: 'component' | 'sketch';
     icon: React.ReactNode;
-    name: string;
+    name: ComponentType;
 };
 
 const CardBase: React.FC<React.ComponentPropsWithRef<'div'> & CardProps> = ({
     cardType,
     icon,
     name,
+    className,
     ...props
 }) => (
     <div
         className={cn(
-            'z-10 flex h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded border border-gray-300 bg-body text-gray-600 transition-shadow duration-300 ease-in-out hover:shadow-sm',
+            'z-10 flex h-20 cursor-grab flex-col items-center justify-center gap-1 rounded border border-gray-300 bg-body text-gray-600 transition-shadow duration-300 ease-in-out hover:shadow-sm',
             {
-                'border-blue-400 shadow': cardType === 'sketch',
+                'border-blue-400 shadow-md': cardType === 'sketch',
             },
+            className,
         )}
         {...props}
     >
@@ -29,15 +31,19 @@ const CardBase: React.FC<React.ComponentPropsWithRef<'div'> & CardProps> = ({
     </div>
 );
 
-const CardComponent: React.FC<CardProps> = ({
-    component = 'component',
-    cardType = 'component',
-    icon,
-    name,
-}) => {
+const CardDraggable: React.FC<CardProps> = ({ icon, name }) => {
+    const data: DragCardData = {
+        type: 'card',
+        name,
+        kind: (() => {
+            if (name === 'Row') return 'row';
+            if (name === 'Column') return 'column';
+            return 'content';
+        })(),
+    };
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-        data: { name, icon, cardType, component, type: 'card' },
-        id: name,
+        id: `card:${name}`,
+        data,
     });
 
     if (isDragging) {
@@ -48,8 +54,6 @@ const CardComponent: React.FC<CardProps> = ({
 
     return (
         <CardBase
-            component={component}
-            cardType={cardType}
             ref={setNodeRef}
             icon={icon}
             name={name}
@@ -60,16 +64,11 @@ const CardComponent: React.FC<CardProps> = ({
 };
 
 export const Card: React.FC<CardProps> = ({
-    component = 'component',
     cardType = 'component',
     ...props
 }) => {
     if (cardType === 'sketch') {
-        return (
-            <CardBase component={component} cardType={cardType} {...props} />
-        );
+        return <CardBase cardType={cardType} {...props} />;
     }
-    return (
-        <CardComponent component={component} cardType={cardType} {...props} />
-    );
+    return <CardDraggable {...props} />;
 };
