@@ -24,6 +24,21 @@ export const Editable: React.FC<EditableProps> = ({
 }) => {
     const ref = useRef<HTMLDivElement | null>(null);
     const { updateProperties, commit, setActive } = useEmail();
+    const pendingFocus = useEmail((s) => s.pendingFocus);
+    const clearPendingFocus = useEmail((s) => s.clearPendingFocus);
+
+    useEffect(() => {
+        if (pendingFocus !== id || !ref.current) return;
+        const el = ref.current;
+        el.focus();
+        // Select all so the placeholder copy is replaced on first keystroke.
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        clearPendingFocus();
+    }, [pendingFocus, id, clearPendingFocus]);
 
     useEffect(() => {
         const el = ref.current;

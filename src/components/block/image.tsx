@@ -1,5 +1,8 @@
+import { useState } from 'react';
+
 import type { ImageNode } from '@/types';
-import { paddingCss, PLACEHOLDER_IMAGE } from '@/utils';
+import { cn, paddingCss, PLACEHOLDER_IMAGE, readFileAsDataUrl } from '@/utils';
+import { useEmail } from '@/hooks';
 
 export const Image: React.FC<{ node: ImageNode; contentWidth: number }> = ({
     node,
@@ -7,8 +10,34 @@ export const Image: React.FC<{ node: ImageNode; contentWidth: number }> = ({
 }) => {
     const p = node.properties;
     const px = Math.round((contentWidth * p.width) / 100);
+    const updateProperties = useEmail((s) => s.updateProperties);
+    const [over, setOver] = useState(false);
+
     return (
-        <div style={{ padding: paddingCss(p.padding), textAlign: p.align }}>
+        <div
+            className={cn('transition-colors', {
+                'bg-blue-100 outline-2 outline-blue-400 outline-dashed': over,
+            })}
+            onDragOver={(e) => {
+                if (e.dataTransfer.types.includes('Files')) {
+                    e.preventDefault();
+                    setOver(true);
+                }
+            }}
+            onDragLeave={() => setOver(false)}
+            onDrop={async (e) => {
+                setOver(false);
+                const file = e.dataTransfer.files?.[0];
+                if (!file || !file.type.startsWith('image/')) return;
+                e.preventDefault();
+                updateProperties(node.id, {
+                    src: await readFileAsDataUrl(file),
+                    alt: p.alt || file.name,
+                });
+            }}
+            style={{ padding: paddingCss(p.padding), textAlign: p.align }}
+            aria-hidden
+        >
             <img
                 style={{
                     display: 'inline-block',

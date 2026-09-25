@@ -17,6 +17,8 @@ interface ContainerProps extends React.ComponentPropsWithRef<'div'> {
     kind: DropKind;
     /** Where the toolbar sits relative to the block. */
     toolbar?: 'top' | 'bottom';
+    /** Block is hidden on the current preview device. */
+    hidden?: boolean;
 }
 
 const ToolbarButton: React.FC<
@@ -44,6 +46,7 @@ export const Container: React.FC<ContainerProps> = ({
     name,
     kind,
     toolbar = 'top',
+    hidden = false,
     className,
     children,
     style,
@@ -76,6 +79,7 @@ export const Container: React.FC<ContainerProps> = ({
                     'outline-blue-400': active,
                     'outline-blue-300/70': over && !active,
                     'opacity-40': drag.isDragging,
+                    'opacity-30 grayscale': hidden,
                 },
                 className,
             )}
@@ -175,6 +179,11 @@ export const Container: React.FC<ContainerProps> = ({
                         </div>
                     ) : null}
                 </div>
+            ) : null}
+            {hidden ? (
+                <span className="pointer-events-none absolute top-1 right-1 z-10 rounded bg-gray-700/80 px-1.5 py-0.5 text-[10px] text-white">
+                    Hidden on this device
+                </span>
             ) : null}
             <div ref={drag.setNodeRef}>{children}</div>
         </div>

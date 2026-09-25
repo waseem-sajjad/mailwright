@@ -12,6 +12,9 @@ export const Row: React.FC<{ row: RowNode; canvas: CanvasProperties }> = ({
     const { view } = useSettings();
     const p = row.properties;
     const stacked = p.stack && view === 'mobile';
+    const hidden =
+        (view === 'mobile' && p.hideOnMobile === true) ||
+        (view !== 'mobile' && p.hideOnDesktop === true);
 
     return (
         <Container
@@ -23,6 +26,7 @@ export const Row: React.FC<{ row: RowNode; canvas: CanvasProperties }> = ({
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
             }}
+            hidden={hidden}
             id={row.id}
             kind="row"
             name="Row"
