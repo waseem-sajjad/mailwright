@@ -155,9 +155,17 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
   `src/dsl.ts`; `dslToTree` expands it into a normalised canvas tree.
 - Dataset = rules engine output + 👍-rated generations (`pnpm dataset`).
   Training is Python (`ai/train.py`, GPU auto-detected, bf16 on CUDA).
-- Web side: `utils/api.ts` (axios), `components/ai.tsx` (AI dialog),
-  templates dialog "Server" tab with `captureCanvas()` screenshots
-  (`html-to-image`; elements marked `data-editor-only` are skipped).
+- Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
+  (`components/chat.tsx`, state in `hooks/useChat.ts`, persisted to
+  localStorage). First message generates; later messages that look like
+  edits call `/api/ai/refine` with the last DSL; "subject line" requests call
+  `/api/ai/subjects`. The template library is server-only
+  (`components/library.tsx`): screenshots via `captureCanvas()`
+  (`html-to-image`; `data-editor-only` elements are skipped) with a live
+  scaled iframe as fallback thumbnail. There is no localStorage library.
+- `utils/api-bridge.ts` exists only so the chat panel can import a few
+  shared helpers without touching the barrel; keep DOM/axios modules out of
+  `utils/index.ts`.
 - Verify the server with `pnpm build` then curl the routes; the store and
   export smoke tests still run via the esbuild recipe above.
 
