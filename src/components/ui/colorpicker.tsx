@@ -1,99 +1,81 @@
 import { Content, Portal, Root, Trigger } from '@radix-ui/react-popover';
-import type { ColorResult, RGBColor } from 'react-color';
 import { SketchPicker } from 'react-color';
-import { useMemo, useState } from 'react';
 import { Slash } from 'lucide-react';
 
+import type { RGBColor } from '@/types';
+
 export interface ColorPickerProps {
-    defaultColor?: RGBColor;
-    onChange?: (color: RGBColor) => void;
+    value: RGBColor;
+    onChange: (color: RGBColor) => void;
+    onCommit?: () => void;
 }
 
+const PRESETS = [
+    'transparent',
+    '#ffffff',
+    '#f2f2f2',
+    '#e5e7eb',
+    '#9ca3af',
+    '#4b5563',
+    '#111827',
+    '#000000',
+    '#ef4444',
+    '#f97316',
+    '#f59e0b',
+    '#22c55e',
+    '#14b8a6',
+    '#0ea5e9',
+    '#2563eb',
+    '#6366f1',
+    '#a855f7',
+    '#ec4899',
+];
+
 export const ColorPicker: React.FC<ColorPickerProps> = ({
-    defaultColor,
+    value,
     onChange,
-}) => {
-    const [value, setValue] = useState<ColorResult>({
-        hex: '#000000',
-        hsl: { h: 0, s: 0, l: 0 },
-        rgb: defaultColor ?? { r: 0, g: 0, b: 0 },
-    });
-
-    useMemo(() => {
-        if (defaultColor) {
-            setValue({
-                hex: '#000000',
-                hsl: { h: 0, s: 0, l: 0 },
-                rgb: defaultColor,
-            });
-        }
-    }, [defaultColor]);
-
-    return (
-        <Root>
-            <Trigger asChild>
-                <div className="size-6.5 cursor-pointer overflow-hidden rounded border border-gray-300 p-0.5">
-                    <div
-                        style={{
-                            backgroundColor: `rgba(${value.rgb.r}, ${value.rgb.g}, ${value.rgb.b}, ${value.rgb.a ?? 1})`,
-                        }}
-                        className="flex size-full items-center justify-center overflow-hidden rounded"
-                    >
-                        {value.rgb?.a === 0 ? (
-                            <div>
-                                <Slash className="text-red-300" size={16} />
-                            </div>
-                        ) : null}
-                    </div>
-                </div>
-            </Trigger>
-            <Portal>
-                <Content
-                    alignOffset={10}
-                    side="bottom"
-                    sideOffset={5}
-                    align="end"
+    onCommit,
+}) => (
+    <Root onOpenChange={(open) => !open && onCommit?.()}>
+        <Trigger asChild>
+            <button
+                className="size-6.5 cursor-pointer overflow-hidden rounded border border-gray-300 p-0.5"
+                aria-label="Pick colour"
+                type="button"
+            >
+                <div
+                    style={{
+                        backgroundColor: `rgba(${value.r}, ${value.g}, ${value.b}, ${value.a ?? 1})`,
+                    }}
+                    className="flex size-full items-center justify-center overflow-hidden rounded"
                 >
-                    <SketchPicker
-                        onChange={(color) => {
-                            setValue(color);
-                            onChange?.({
-                                r: color.rgb.r,
-                                g: color.rgb.g,
-                                b: color.rgb.b,
-                                a: color.rgb.a,
-                            });
-                        }}
-                        presetColors={[
-                            'transparent',
-                            '#f2f2f2',
-                            '#000000',
-                            '#333333',
-                            '#666666',
-                            '#999999',
-                            '#cccccc',
-                            '#ffffff',
-                            '#ff0000',
-                            '#ff9900',
-                            '#ffff00',
-                            '#00ff00',
-                            '#00ffff',
-                            '#0000ff',
-                            '#9900ff',
-                            '#ff00ff',
-                            '#ffcc00',
-                            '#ff6600',
-                            '#cc3300',
-                            '#993300',
-                            '#003300',
-                            '#003366',
-                            '#000080',
-                            '#333399',
-                        ]}
-                        color={value?.rgb}
-                    />
-                </Content>
-            </Portal>
-        </Root>
-    );
-};
+                    {value.a === 0 ? (
+                        <Slash className="text-red-300" size={16} />
+                    ) : null}
+                </div>
+            </button>
+        </Trigger>
+        <Portal>
+            <Content
+                className="z-50"
+                alignOffset={10}
+                side="bottom"
+                sideOffset={5}
+                align="end"
+            >
+                <SketchPicker
+                    onChange={(color) => {
+                        onChange({
+                            r: color.rgb.r,
+                            g: color.rgb.g,
+                            b: color.rgb.b,
+                            a: color.rgb.a ?? 1,
+                        });
+                    }}
+                    presetColors={PRESETS}
+                    color={value}
+                />
+            </Content>
+        </Portal>
+    </Root>
+);

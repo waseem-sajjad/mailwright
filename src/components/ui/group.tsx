@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { Slot } from '@radix-ui/react-slot';
 
 import { cn } from '@/utils';
@@ -30,10 +30,11 @@ export const GroupItem: React.FC<GroupItemProps> = ({ children, value }) => {
     return (
         <Slot
             aria-label={value}
+            aria-pressed={state.value === value}
             className={cn(
-                'cursor-pointer border-l border-gray-300 px-3 py-2 transition-colors duration-200 ease-in-out hover:bg-gray-100',
+                'cursor-pointer border-l border-gray-300 px-3 py-2 text-gray-600 transition-colors duration-200 ease-in-out first:border-l-0 hover:bg-gray-100',
                 {
-                    'bg-gray-100': state.value === value,
+                    'bg-gray-100 text-blue-600': state.value === value,
                 },
             )}
             onClick={() => state.onChange(value)}
@@ -43,46 +44,24 @@ export const GroupItem: React.FC<GroupItemProps> = ({ children, value }) => {
     );
 };
 
-const Group: React.FC<React.PropsWithChildren> = ({ children }) => (
-    <div className="w-fit overflow-hidden rounded-xs border-y border-gray-300 last:border-r">
-        {children}
-    </div>
-);
-
 export interface GroupRootProps {
-    onChange?: (value: string) => void;
+    onChange: (value: string) => void;
     children: React.ReactNode;
-    defaultValue: string;
+    value: string;
 }
 
 export const GroupRoot: React.FC<GroupRootProps> = ({
     children,
-    defaultValue,
+    value,
     onChange,
 }) => {
-    const [value, setValue] = useState(defaultValue);
-
-    const store = useMemo(() => {
-        const handleOnChange = (val: string) => {
-            setValue(val);
-            onChange?.(val);
-        };
-
-        return {
-            onChange: handleOnChange,
-            value,
-        };
-    }, [value, onChange]);
-
-    useMemo(() => {
-        if (defaultValue !== value) {
-            setValue(defaultValue);
-        }
-    }, [defaultValue, value]);
+    const store = useMemo(() => ({ onChange, value }), [value, onChange]);
 
     return (
         <GroupContext value={store}>
-            <Group>{children}</Group>
+            <div className="flex w-fit overflow-hidden rounded-xs border border-gray-300">
+                {children}
+            </div>
         </GroupContext>
     );
 };

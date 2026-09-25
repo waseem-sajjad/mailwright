@@ -1,69 +1,74 @@
 import { Minus, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+
+import { clamp } from '@/utils';
 
 export interface UpdownProps {
-    defaultValue?: number;
-    onChange?: (value: number) => void;
+    value: number;
+    onChange: (value: number) => void;
     min?: number;
     max?: number;
+    step?: number;
+    unit?: string;
 }
 
 export const Updown: React.FC<UpdownProps> = ({
-    defaultValue = 0,
-    max,
-    min,
+    value,
+    max = 9999,
+    min = -9999,
+    step = 1,
+    unit = 'px',
     onChange,
 }) => {
-    const [value, setValue] = useState<number>(defaultValue);
+    const [draft, setDraft] = useState(String(value));
 
-    const handleValue = (val: number) => {
-        setValue(val);
-        onChange?.(val);
+    useEffect(() => {
+        setDraft(String(value));
+    }, [value]);
+
+    const emit = (next: number) => {
+        const safe = clamp(Number.isNaN(next) ? min : next, min, max);
+        onChange(Math.round(safe * 100) / 100);
     };
-
-    useMemo(() => {
-        setValue(defaultValue);
-    }, [defaultValue]);
 
     return (
         <div className="flex space-x-2 text-xs">
             <div className="flex items-center rounded-xs border border-gray-300">
                 <input
                     onChange={(e) => {
-                        if (Number.isNaN(Number(e.target.value))) return;
-
-                        if (max && Number(e.target.value) > max) {
-                            handleValue(max);
-                            return;
+                        setDraft(e.target.value);
+                        const parsed = Number(e.target.value);
+                        if (e.target.value !== '' && !Number.isNaN(parsed)) {
+                            emit(parsed);
                         }
-
-                        handleValue(Number(e.target.value));
                     }}
+                    onBlur={() => emit(Number(draft))}
                     className="w-14 px-1.5 py-2 text-center outline-0"
-                    value={value}
+                    aria-label="Value"
+                    inputMode="decimal"
+                    value={draft}
                     type="text"
                 />
-                <button
-                    className="border-l border-gray-300 bg-gray-100 px-3 py-2 font-medium text-gray-400"
-                    type="button"
-                >
-                    px
-                </button>
+                <span className="border-l border-gray-300 bg-gray-100 px-2 py-2 font-medium text-gray-400">
+                    {unit}
+                </span>
             </div>
 
             <div className="flex items-center rounded-xs border border-gray-300">
                 <button
-                    className="cursor-pointer p-2 font-medium text-gray-400 hover:bg-body"
-                    disabled={!!(value === 0 || (min && value <= min))}
-                    onClick={() => handleValue(value - 1)}
+                    className="cursor-pointer p-2 font-medium text-gray-400 hover:bg-body disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => emit(value - step)}
+                    disabled={value <= min}
+                    aria-label="Decrease"
                     type="button"
                 >
                     <Minus size={16} />
                 </button>
                 <button
-                    className="cursor-pointer border-l border-gray-300 p-2 font-medium text-gray-400 hover:bg-body"
-                    onClick={() => handleValue(value + 1)}
-                    disabled={!!(max && value >= max)}
+                    className="cursor-pointer border-l border-gray-300 p-2 font-medium text-gray-400 hover:bg-body disabled:cursor-not-allowed disabled:opacity-40"
+                    onClick={() => emit(value + step)}
+                    disabled={value >= max}
+                    aria-label="Increase"
                     type="button"
                 >
                     <Plus size={16} />
