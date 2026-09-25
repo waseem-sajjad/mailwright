@@ -5,3 +5,6 @@ export * from './factory';
 export * from './storage';
 export * from './export';
 export * from './templates';
+export * from './mergeTags';
+export * from './library';
+export * from './lint';
