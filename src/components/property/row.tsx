@@ -1,100 +1,157 @@
-import { AlignCenter, AlignLeft } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
+import { useEmail, useNodeProps } from '@/hooks';
+import type { ColumnNode, RowNode } from '@/types';
 import {
+    AlignGroup,
+    Button,
     CheckBox,
-    ColorPicker,
-    GroupItem,
-    GroupRoot,
-    Padding,
+    Divider,
+    Field,
+    Input,
+    Updown,
 } from '@/components/ui';
-import type { RowComponentType, RowProperties } from '@/types';
-import { useEmail } from '@/hooks';
+import { cn, COLUMN_LAYOUTS } from '@/utils';
 
-export const RowProperty: React.FC<RowComponentType> = ({ properties }) => {
-    const { updateActiveProperties } = useEmail();
+import { ColorField, PaddingField } from './shared';
+
+export const RowProperty: React.FC<{ node: RowNode }> = ({ node }) => {
+    const { p, set, setTransient, commit } = useNodeProps(node);
+    const { setRowLayout, addColumn, removeNode, setActive } = useEmail();
+    const layoutKey = p.layout.map((w) => Math.round(w)).join('-');
 
     return (
-        <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between px-4 pt-5">
-                <span className="text-xs font-medium text-gray-600">
-                    Background Color
-                </span>
-                <ColorPicker
-                    defaultColor={properties.backgroundColor}
-                    onChange={(c) => {
-                        updateActiveProperties<RowProperties>({
-                            backgroundColor: c,
-                        });
-                    }}
-                />
-            </div>
-            <hr className="mx-4 border-gray-300" />
-            <div className="flex items-center justify-between px-4">
-                <span className="text-xs font-medium text-gray-600">
-                    Content Alignment
-                </span>
-                <GroupRoot
-                    onChange={(val) => {
-                        updateActiveProperties<RowProperties>({
-                            contentAlign: val,
-                        });
-                    }}
-                    defaultValue={properties.contentAlign}
-                >
-                    <GroupItem value="left">
-                        <button title="Align Left" type="button">
-                            <AlignLeft size={16} />
-                        </button>
-                    </GroupItem>
-                    <GroupItem value="center">
-                        <button title="Align Center" type="button">
-                            <AlignCenter size={16} />
-                        </button>
-                    </GroupItem>
-                    {/* <GroupItem value="right">
-                <button title="Align Right" type="button">
-                    <AlignRight size={16} />
-                </button>
-            </GroupItem> */}
-                </GroupRoot>
-            </div>
-            <hr className="mx-4 border-gray-300" />
-            <Padding
-                defaultValue={{
-                    bottom: properties.paddingBottom,
-                    right: properties.paddingRight,
-                    left: properties.paddingLeft,
-                    top: properties.paddingTop,
-                }}
-                onChange={(val) => {
-                    updateActiveProperties<RowProperties>({
-                        paddingTop: val.top,
-                        paddingRight: val.right,
-                        paddingBottom: val.bottom,
-                        paddingLeft: val.left,
-                    });
-                }}
-                link={properties.paddingLink}
-                onLinkChange={(val) => {
-                    updateActiveProperties<RowProperties>({
-                        paddingLink: val,
-                    });
-                }}
+        <div className="flex flex-col gap-5 py-5">
+            <Field label="Columns" stacked>
+                <div className="grid grid-cols-2 gap-2">
+                    {COLUMN_LAYOUTS.map((layout) => {
+                        const key = layout.value
+                            .map((w) => Math.round(w))
+                            .join('-');
+                        return (
+                            <button
+                                className={cn(
+                                    'flex h-9 cursor-pointer items-center gap-0.5 rounded-xs border border-gray-300 p-1 hover:border-blue-400',
+                                    {
+                                        'border-blue-500 bg-blue-50':
+                                            key === layoutKey,
+                                    },
+                                )}
+                                onClick={() =>
+                                    setRowLayout(node.id, layout.value)
+                                }
+                                title={layout.label}
+                                key={key}
+                                type="button"
+                            >
+                                {layout.value.map((w, i) => (
+                                    <span
+                                        className="h-full rounded-[2px] bg-blue-300"
+                                        style={{ width: `${w}%` }}
+                                        // eslint-disable-next-line react/no-array-index-key
+                                        key={i}
+                                    />
+                                ))}
+                            </button>
+                        );
+                    })}
+                </div>
+            </Field>
+            <Field label="Column widths" stacked>
+                <div className="flex flex-col gap-2">
+                    {node.children.map((column, index) => (
+                        <div
+                            className="flex items-center gap-2"
+                            key={column.id}
+                        >
+                            <button
+                                className="w-16 cursor-pointer text-left text-xs text-gray-500 hover:text-blue-600"
+                                onClick={() => setActive(column.id)}
+                                type="button"
+                            >
+                                Col {index + 1}
+                            </button>
+                            <Updown
+                                onChange={(width) => {
+                                    const layout = [...p.layout];
+                                    layout[index] = width;
+                                    setRowLayout(node.id, layout);
+                                }}
+                                value={
+                                    Math.round(
+                                        (column as ColumnNode).properties
+                                            .width * 10,
+                                    ) / 10
+                                }
+                                max={100}
+                                min={5}
+                                unit="%"
+                            />
+                            <button
+                                className="cursor-pointer p-1 text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
+                                disabled={node.children.length <= 1}
+                                onClick={() => removeNode(column.id)}
+                                aria-label="Remove column"
+                                title="Remove column"
+                                type="button"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    ))}
+                    <Button
+                        disabled={node.children.length >= 6}
+                        onClick={() => addColumn(node.id)}
+                        className="w-fit"
+                        size="sm"
+                    >
+                        <Plus size={14} /> Add column
+                    </Button>
+                </div>
+            </Field>
+            <Divider />
+            <ColorField
+                onChange={(backgroundColor) =>
+                    setTransient({ backgroundColor })
+                }
+                label="Row Background"
+                value={p.backgroundColor}
+                onCommit={commit}
             />
-            <hr className="mx-4 border-gray-300" />
-            <div className="flex items-center justify-between px-4">
-                <span className="text-xs font-medium text-gray-600">
-                    Content Stack If Mobile
-                </span>
-                <CheckBox
-                    defaultChecked={properties.stack}
-                    onChange={(val) => {
-                        updateActiveProperties<RowProperties>({
-                            stack: val.target.checked,
-                        });
-                    }}
+            <ColorField
+                onChange={(contentBackgroundColor) =>
+                    setTransient({ contentBackgroundColor })
+                }
+                value={p.contentBackgroundColor}
+                label="Content Background"
+                onCommit={commit}
+            />
+            <Field label="Background Image URL" stacked>
+                <Input
+                    onChange={(e) =>
+                        setTransient({ backgroundImage: e.target.value })
+                    }
+                    placeholder="https://…/image.jpg"
+                    value={p.backgroundImage}
+                    onBlur={commit}
                 />
-            </div>
+            </Field>
+            <Divider />
+            <Field label="Content Alignment">
+                <AlignGroup
+                    onChange={(contentAlign) => set({ contentAlign })}
+                    value={p.contentAlign}
+                />
+            </Field>
+            <Divider />
+            <PaddingField node={node} />
+            <Divider />
+            <Field label="Stack Columns On Mobile">
+                <CheckBox
+                    onChange={(stack) => set({ stack })}
+                    checked={p.stack}
+                />
+            </Field>
         </div>
     );
 };

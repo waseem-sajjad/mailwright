@@ -1,143 +1,83 @@
-import { ColorPicker, Input, SelectBox, Updown } from '@/components/ui';
-import type { CanvasComponentType } from '@/types';
-import { useEmail } from '@/hooks';
+import { useNodeProps } from '@/hooks';
+import type { CanvasNode } from '@/types';
+import { Divider, Field, Input, SelectBox, Updown } from '@/components/ui';
+import { FONT_FAMILIES } from '@/utils';
 
-export const CanvasProperty: React.FC<CanvasComponentType> = ({
-    properties,
-}) => {
-    const { updateActiveProperties } = useEmail();
+import { ColorField } from './shared';
+
+export const CanvasProperty: React.FC<{ node: CanvasNode }> = ({ node }) => {
+    const { p, set, setTransient, commit } = useNodeProps(node);
 
     return (
-        <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between px-4 pt-5">
-                <span className="text-xs font-medium text-gray-600">
-                    Background Color
-                </span>
-                <ColorPicker
-                    defaultColor={properties.backgroundColor}
-                    onChange={(val) => {
-                        updateActiveProperties({
-                            backgroundColor: val,
-                        });
-                    }}
-                />
-            </div>
-            <hr className="mx-4 border-gray-200" />
-            <div className="flex items-center justify-between px-4">
-                <span className="text-xs font-medium text-gray-600">
-                    Text Color
-                </span>
-                <ColorPicker
-                    defaultColor={properties.color}
-                    onChange={(val) => {
-                        updateActiveProperties({
-                            color: val,
-                        });
-                    }}
-                />
-            </div>
-            <hr className="mx-4 border-gray-200" />
-            <div className="flex items-center justify-between px-4">
-                <span className="text-xs font-medium text-gray-600">
-                    Font Family
-                </span>
-                <SelectBox
-                    defaultValue={properties.fontFamily}
-                    onChange={(value) => {
-                        updateActiveProperties({
-                            fontFamily: value,
-                        });
-                    }}
-                    options={[
-                        {
-                            label: 'Arial',
-                            value: 'Arial',
-                        },
-                        {
-                            label: 'Helvetica Neue',
-                            value: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-                        },
-                        {
-                            label: 'Times New Roman',
-                            value: 'Times New Roman',
-                        },
-                        {
-                            label: 'Courier New',
-                            value: 'Courier New',
-                        },
-                        {
-                            label: 'Verdana',
-                            value: 'Verdana',
-                        },
-                        {
-                            label: 'Georgia',
-                            value: 'Georgia',
-                        },
-                        {
-                            label: 'Tahoma',
-                            value: 'Tahoma',
-                        },
-                        {
-                            label: 'Trebuchet MS',
-                            value: "'Trebuchet MS', Helvetica, sans-serif",
-                        },
-                    ]}
-                />
-            </div>
-            <hr className="mx-4 border-gray-200" />
-            <div className="flex items-center justify-between px-4">
-                <span className="text-xs font-medium text-gray-600">
-                    Font Weight
-                </span>
-                <SelectBox
-                    defaultValue={properties.fontWeight}
-                    onChange={(value) => {
-                        updateActiveProperties({
-                            fontWeight: value,
-                        });
-                    }}
-                    options={[
-                        {
-                            label: 'Normal',
-                            value: 'normal',
-                        },
-                        {
-                            label: 'Bold',
-                            value: 'bold',
-                        },
-                    ]}
-                />
-            </div>
-            <hr className="mx-4 border-gray-200" />
-            <div className="flex items-center justify-between px-4">
-                <span className="text-xs font-medium text-gray-600">
-                    Content Width
-                </span>
-                <Updown
-                    defaultValue={properties.contentWidth}
-                    max={900}
-                    onChange={(value) => {
-                        updateActiveProperties({
-                            contentWidth: value,
-                        });
-                    }}
-                />
-            </div>
-            <hr className="mx-4 border-gray-200" />
-            <div className="flex flex-col gap-2 px-4">
-                <span className="text-xs font-medium text-gray-600">
-                    Preheader Text
-                </span>
+        <div className="flex flex-col gap-5 py-5">
+            <Field label="Email Title" hint="Used as the HTML <title>" stacked>
                 <Input
-                    defaultValue={properties.preheaderText}
-                    placeholder="Please enter email preheader."
-                    onChange={(e) => {
-                        updateActiveProperties({
-                            preheaderText: e.target.value,
-                        });
-                    }}
+                    onChange={(e) => setTransient({ title: e.target.value })}
+                    placeholder="Untitled email"
+                    onBlur={commit}
+                    value={p.title}
                 />
-            </div>
+            </Field>
+            <Field
+                hint="Shown next to the subject in most inboxes"
+                label="Preheader Text"
+                stacked
+            >
+                <Input
+                    onChange={(e) =>
+                        setTransient({ preheaderText: e.target.value })
+                    }
+                    placeholder="A short summary of this email…"
+                    value={p.preheaderText}
+                    onBlur={commit}
+                />
+            </Field>
+            <Divider />
+            <ColorField
+                onChange={(backgroundColor) =>
+                    setTransient({ backgroundColor })
+                }
+                label="Background Colour"
+                value={p.backgroundColor}
+                onCommit={commit}
+            />
+            <ColorField
+                onChange={(contentBackgroundColor) =>
+                    setTransient({ contentBackgroundColor })
+                }
+                value={p.contentBackgroundColor}
+                label="Content Background"
+                onCommit={commit}
+            />
+            <ColorField
+                onChange={(color) => setTransient({ color })}
+                label="Text Colour"
+                onCommit={commit}
+                value={p.color}
+            />
+            <ColorField
+                onChange={(linkColor) => setTransient({ linkColor })}
+                label="Link Colour"
+                value={p.linkColor}
+                onCommit={commit}
+            />
+            <Divider />
+            <Field label="Font Family">
+                <SelectBox
+                    onChange={(fontFamily) => set({ fontFamily })}
+                    options={FONT_FAMILIES.filter((f) => f.value !== 'inherit')}
+                    value={p.fontFamily}
+                />
+            </Field>
+            <Field label="Content Width">
+                <Updown
+                    onChange={(contentWidth) => set({ contentWidth })}
+                    value={p.contentWidth}
+                    max={900}
+                    min={320}
+                    step={10}
+                />
+            </Field>
         </div>
     );
 };
