@@ -5,19 +5,27 @@ description: Architecture, conventions and the add-a-block checklist for this em
 
 # Email builder development
 
+The repo is a pnpm workspace; the app is `apps/web` and every path below is
+relative to it. Run the commands from `apps/web`. The pnpm store is at the
+workspace root (`../../node_modules/.pnpm`); `pnpm-workspace.yaml` sets
+`publicHoistPattern: ['@types/*']` so declaration files in the store can see
+React's types after the next `pnpm install`. Until then, annotate callback
+parameters of third-party components explicitly (see `dnd.tsx`).
+
 ## Commands
 
 ```bash
+cd apps/web
 pnpm dev          # Vite dev server on http://localhost:3000
 pnpm build        # tsc -b && vite build  (must pass before finishing)
 pnpm lint         # eslint . (must exit 0; run `npx eslint . --fix` then `npx prettier --write "src/**/*.{ts,tsx}"`)
 ```
 
 There is no test runner. For logic that does not touch the DOM (tree ops,
-store, export) bundle a script with pnpm's esbuild and run it in Node:
+store, export) bundle a script with the workspace's esbuild and run it in Node:
 
 ```bash
-ESB=$(ls -d node_modules/.pnpm/esbuild@*/node_modules/esbuild/bin/esbuild | head -1)
+ESB=$(ls -d ../../node_modules/.pnpm/esbuild@*/node_modules/esbuild/bin/esbuild | head -1)
 $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=out.mjs && node out.mjs
 ```
 
@@ -120,10 +128,17 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 2. `src/types/properties.ts`: add `XProperties` and register it in `PropertiesOf`.
 3. `src/types/components.ts`: add `XNode`.
 4. `src/utils/factory.ts`: `xDefaults()` and an entry in `contentDefaults`.
-5. `src/components/blocks.tsx`: icon, label and group in `blockMeta`.
+5. `src/components/blocks.tsx`: icon, label and group in `blockMeta`
+   (`content` for primitives, `section` for composed pieces like Product,
+   Quote, Footer; the palette shows one collapsible per group).
 6. `src/components/block/x.tsx`: editor renderer; add a `case` in `block/content.tsx`.
 7. `src/components/property/x.tsx`: settings panel; register in `property/index.tsx`.
 8. `src/utils/export.ts`: `renderX()` and a `case` in `renderContent`.
+   Pass the block's properties as the 4th `wrap()` argument so visibility
+   classes apply. Plain-text fields go through `escapeHtml`; rich HTML
+   fields (Heading/Text/List/Table cells) are emitted raw.
+8b. `src/utils/lint.ts`: add a `case` if the block can ship broken links,
+   embedded images or missing legal text.
 9. Optionally use it in `src/utils/templates.ts`.
 10. `pnpm lint && pnpm build`.
 
