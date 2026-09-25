@@ -1,6 +1,19 @@
 import type { Align, Border, Padding, RGBColor } from './common';
 
+/** Per-device visibility shared by rows and every content block. */
+export type Visibility = {
+    hideOnMobile?: boolean;
+    hideOnDesktop?: boolean;
+};
+
+export type MergeTag = {
+    tag: string;
+    label: string;
+    sample: string;
+};
+
 export type CanvasProperties = {
+    mergeTags: MergeTag[];
     backgroundColor: RGBColor;
     contentBackgroundColor: RGBColor;
     fontFamily: string;
@@ -13,7 +26,7 @@ export type CanvasProperties = {
 
 export type ColumnLayout = number[];
 
-export type RowProperties = {
+export type RowProperties = Visibility & {
     backgroundColor: RGBColor;
     contentBackgroundColor: RGBColor;
     backgroundImage: string;
@@ -33,7 +46,7 @@ export type ColumnProperties = {
     width: number;
 };
 
-export type TextLikeProperties = {
+export type TextLikeProperties = Visibility & {
     text: string;
     align: Align;
     fontSize: number;
@@ -53,7 +66,7 @@ export type HeadingProperties = TextLikeProperties & {
 
 export type TextProperties = TextLikeProperties;
 
-export type DividerProperties = {
+export type DividerProperties = Visibility & {
     width: number;
     thickness: number;
     style: 'solid' | 'dashed' | 'dotted';
@@ -63,7 +76,7 @@ export type DividerProperties = {
     paddingLink: boolean;
 };
 
-export type ButtonProperties = {
+export type ButtonProperties = Visibility & {
     text: string;
     href: string;
     target: '_blank' | '_self';
@@ -80,7 +93,7 @@ export type ButtonProperties = {
     paddingLink: boolean;
 };
 
-export type ListProperties = {
+export type ListProperties = Visibility & {
     items: string[];
     ordered: boolean;
     fontSize: number;
@@ -92,7 +105,7 @@ export type ListProperties = {
     paddingLink: boolean;
 };
 
-export type ImageProperties = {
+export type ImageProperties = Visibility & {
     src: string;
     alt: string;
     href: string;
@@ -104,7 +117,7 @@ export type ImageProperties = {
     paddingLink: boolean;
 };
 
-export type VideoProperties = {
+export type VideoProperties = Visibility & {
     url: string;
     thumbnail: string;
     autoThumbnail: boolean;
@@ -134,7 +147,7 @@ export type SocialItem = {
     iconUrl: string;
 };
 
-export type SocialProperties = {
+export type SocialProperties = Visibility & {
     items: SocialItem[];
     iconSize: number;
     spacing: number;
@@ -144,7 +157,7 @@ export type SocialProperties = {
     paddingLink: boolean;
 };
 
-export type HtmlProperties = {
+export type HtmlProperties = Visibility & {
     html: string;
     padding: Padding;
     paddingLink: boolean;
@@ -156,7 +169,7 @@ export type MenuItem = {
     href: string;
 };
 
-export type MenuProperties = {
+export type MenuProperties = Visibility & {
     items: MenuItem[];
     layout: 'horizontal' | 'vertical';
     align: Align;
@@ -171,7 +184,7 @@ export type MenuProperties = {
     paddingLink: boolean;
 };
 
-export type SpacerProperties = {
+export type SpacerProperties = Visibility & {
     height: number;
 };
 

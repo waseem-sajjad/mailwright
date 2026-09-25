@@ -14,6 +14,7 @@ import type {
     ImageProperties,
     ListProperties,
     MenuProperties,
+    MergeTag,
     Padding,
     RowNode,
     RowProperties,
@@ -82,7 +83,20 @@ const white = rgb(255, 255, 255);
 const transparent = rgb(255, 255, 255, 0);
 const dark = rgb(17, 24, 39);
 
+export const DEFAULT_MERGE_TAGS: MergeTag[] = [
+    { tag: 'first_name', label: 'First name', sample: 'Alex' },
+    { tag: 'last_name', label: 'Last name', sample: 'Taylor' },
+    { tag: 'email', label: 'Email address', sample: 'alex@example.com' },
+    { tag: 'company', label: 'Company', sample: 'ACME Inc' },
+    {
+        tag: 'unsubscribe_url',
+        label: 'Unsubscribe URL',
+        sample: 'https://example.com/unsubscribe',
+    },
+];
+
 export const canvasDefaults = (): CanvasProperties => ({
+    mergeTags: DEFAULT_MERGE_TAGS.map((t) => ({ ...t })),
     backgroundColor: rgb(242, 242, 242),
     contentBackgroundColor: transparent,
     fontFamily: 'Arial, Helvetica, sans-serif',
@@ -301,6 +315,26 @@ export const createNode = (type: ComponentType): EmailNode => {
     if (type === 'Column') return createColumn();
     return createContent(type);
 };
+
+const defaultsFor = (node: EmailNode): Record<string, unknown> => {
+    if (node.type === 'Canvas') return canvasDefaults();
+    if (node.type === 'Row') return rowDefaults();
+    if (node.type === 'Column') {
+        return columnDefaults(Number(node.properties?.width ?? 100));
+    }
+    return contentDefaults[node.type]();
+};
+
+/**
+ * Back-fills missing properties with current defaults so documents saved by
+ * older versions of the builder keep loading after schema additions.
+ */
+export const normalizeNode = (node: EmailNode): EmailNode => ({
+    id: node.id || newId(),
+    type: node.type,
+    properties: { ...defaultsFor(node), ...(node.properties ?? {}) },
+    children: (node.children ?? []).map(normalizeNode),
+});
 
 export const isContentType = (type: ComponentType): type is ContentType =>
     type !== 'Canvas' && type !== 'Row' && type !== 'Column';

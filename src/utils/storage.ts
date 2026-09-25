@@ -1,5 +1,7 @@
 import type { CanvasNode, EmailDocument } from '@/types';
 
+import { normalizeNode } from './factory';
+
 export const STORAGE_KEY = 'email-template-builder:document';
 
 export const loadDocument = (): EmailDocument | null => {
@@ -8,7 +10,7 @@ export const loadDocument = (): EmailDocument | null => {
         if (!raw) return null;
         const parsed = JSON.parse(raw) as EmailDocument;
         if (parsed?.root?.type !== 'Canvas') return null;
-        return parsed;
+        return { ...parsed, root: normalizeNode(parsed.root) as CanvasNode };
     } catch {
         return null;
     }
@@ -58,6 +60,14 @@ export const readFileAsText = (file: File): Promise<string> =>
         reader.onload = () => resolve(String(reader.result ?? ''));
         reader.onerror = () => reject(reader.error);
         reader.readAsText(file);
+    });
+
+export const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ''));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
     });
 
 export const copyToClipboard = async (text: string): Promise<boolean> => {
