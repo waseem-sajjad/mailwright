@@ -1,13 +1,10 @@
-import { DndContext } from '@dnd-kit/core';
-
 import Editor from '@/components/editor';
-import Sketch from '@/components/sketch';
+import { Dnd } from '@/components/dnd';
 
 const App = () => (
-    <DndContext>
+    <Dnd>
         <Editor />
-        <Sketch />
-    </DndContext>
+    </Dnd>
 );
 
 export default App;
