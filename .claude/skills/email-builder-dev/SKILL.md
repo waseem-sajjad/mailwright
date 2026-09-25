@@ -142,6 +142,25 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 9. Optionally use it in `src/utils/templates.ts`.
 10. `pnpm lint && pnpm build`.
 
+## Server and AI (`apps/server`)
+
+- Express 5 + zod + axios + `node:sqlite`. Routes in `src/app.ts`; every body
+  is validated by a schema in `src/schemas.ts`. Express 5 types params as
+  `string | string[]`, use `paramId(req)`.
+- The server imports the web app's pure utils via `@/` → `../web/src`. Keep
+  `utils/index.ts` free of DOM/Vite modules (api.ts, screenshot.ts are
+  imported directly by components) or the server will crash at import.
+- AI: `src/ai.ts` tries the Python model service (`AI_URL`, `ai/serve.py`)
+  and falls back to `src/generator.ts` (rules). Both emit the DSL in
+  `src/dsl.ts`; `dslToTree` expands it into a normalised canvas tree.
+- Dataset = rules engine output + 👍-rated generations (`pnpm dataset`).
+  Training is Python (`ai/train.py`, GPU auto-detected, bf16 on CUDA).
+- Web side: `utils/api.ts` (axios), `components/ai.tsx` (AI dialog),
+  templates dialog "Server" tab with `captureCanvas()` screenshots
+  (`html-to-image`; elements marked `data-editor-only` are skipped).
+- Verify the server with `pnpm build` then curl the routes; the store and
+  export smoke tests still run via the esbuild recipe above.
+
 ## Lint conventions that bite
 
 - 4-space indent, single quotes, trailing commas, 80 cols (prettier owns formatting;
