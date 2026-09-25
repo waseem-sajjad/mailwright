@@ -78,6 +78,17 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
   records its selection via `src/utils/selection.ts`; anything that must act on
   that selection after focus moved (toolbar, tag picker) calls `execOnEditable`
   and, for menus, passes `preserveFocus` to `Menu`.
+- Merge tags render as chips in the editor only. `decorateTags`/`undecorateTags`
+  (`utils/mergeTags.ts`) convert between `{{tag}}` text and
+  `<span class="merge-tag" data-merge-tag contenteditable="false">`; the store
+  and export always hold the plain form. `Editable` decorates on render and
+  undecorates on input; `decorateLiveTags` (`utils/mergeTagDom.ts`) turns a
+  hand-typed tag into a chip and parks the caret after it with a ZWSP.
+  Non-editable blocks use `<TagText>` (React) or `decorateTags` on HTML.
+- Fonts: `FONT_FAMILIES` in `factory.ts` carries `group` and an optional
+  `google` family. `FontSelect` renders each option in its face; the editor
+  loads all web fonts via `main.css`, and `export.ts` links only the Google
+  families the document uses, inside `<!--[if !mso]>`.
 - Plain inputs that should accept merge tags use `TagInput`
   (`components/ui/taginput.tsx`), which inserts `{{tag}}` at the caret.
 - Device visibility on the canvas is handled entirely by `Container`: pass
