@@ -18,10 +18,11 @@ export default tseslint.config(
             js.configs.recommended,
             ...tseslint.configs.recommended,
             pluginReact.configs.flat.recommended,
-            eslintConfigPrettier,
-            eslintPluginPrettierRecommended,
             importPlugin.flatConfigs.recommended,
             eslintReactRules.recommended,
+            // Prettier last so it disables every conflicting stylistic rule.
+            eslintConfigPrettier,
+            eslintPluginPrettierRecommended,
         ],
         files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'],
         languageOptions: {
