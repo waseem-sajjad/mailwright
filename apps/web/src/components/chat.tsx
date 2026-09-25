@@ -1,8 +1,10 @@
 import {
     Bot,
     Check,
+    Code2,
     Copy,
     Loader2,
+    RotateCcw,
     Send,
     Sparkles,
     ThumbsDown,
@@ -81,11 +83,38 @@ const Thumb: React.FC<{ html: string; onClick: () => void }> = ({
     </button>
 );
 
+/** The compact template DSL behind a generation, with a copy button. */
+const DslView: React.FC<{ dsl: string }> = ({ dsl }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+        <div className="relative mt-2">
+            <pre className="max-h-56 overflow-auto rounded bg-gray-900 p-2 pr-8 font-mono text-[10px] leading-snug whitespace-pre-wrap text-gray-100">
+                {dsl}
+            </pre>
+            <button
+                className="absolute top-1 right-1 cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
+                onClick={async () => {
+                    if (await copyToClipboard(dsl)) {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1200);
+                    }
+                }}
+                aria-label="Copy DSL"
+                title="Copy DSL"
+                type="button"
+            >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+            </button>
+        </div>
+    );
+};
+
 const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
     const { load, root } = useEmail();
     const { setDialog, notify, setPreviewHtml } = useSettings();
     const rate = useChat((s) => s.rate);
     const [copied, setCopied] = useState<string | null>(null);
+    const [showDsl, setShowDsl] = useState(false);
     const mine = message.role === 'user';
     const g = message.generation;
 
@@ -161,6 +190,19 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                         <div className="flex shrink-0 items-center gap-1">
                             <button
                                 className={cn(
+                                    'cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-violet-600',
+                                    { 'text-violet-600': showDsl },
+                                )}
+                                onClick={() => setShowDsl((v) => !v)}
+                                aria-pressed={showDsl}
+                                aria-label="Show DSL"
+                                title="Show the template DSL"
+                                type="button"
+                            >
+                                <Code2 size={13} />
+                            </button>
+                            <button
+                                className={cn(
                                     'cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-green-600',
                                     {
                                         'text-green-600': g.rating === 1,
@@ -189,6 +231,7 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                             </button>
                         </div>
                     </div>
+                    {showDsl ? <DslView dsl={g.dsl} /> : null}
                     <div className="mt-2 flex flex-wrap gap-1.5">
                         <Button onClick={apply} variant="primary" size="sm">
                             <Wand2 size={12} /> Apply to editor
@@ -260,9 +303,18 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
 
 /** Chat-style AI assistant living in the left sidebar. */
 export const ChatPanel: React.FC = () => {
-    const { messages, pending, send, clear, options, setOptions, context } =
-        useChat();
+    const {
+        messages,
+        pending,
+        send,
+        clear,
+        options,
+        setOptions,
+        context,
+        resetContext,
+    } = useChat();
     const [draft, setDraft] = useState('');
+    const [showContextDsl, setShowContextDsl] = useState(false);
     const [health, setHealth] = useState<Health | null>(null);
     const bottom = useRef<HTMLDivElement>(null);
 
@@ -342,6 +394,55 @@ export const ChatPanel: React.FC = () => {
             </div>
 
             <div className="border-t border-gray-200 bg-white p-2">
+                {context ? (
+                    <div className="mb-2 rounded border border-violet-200 bg-violet-50 px-2 py-1.5 text-[11px] text-violet-900">
+                        <div className="flex items-center gap-1.5">
+                            <Sparkles className="shrink-0" size={12} />
+                            <span className="min-w-0 flex-1 truncate">
+                                <span className="font-semibold">Context:</span>{' '}
+                                “{context.prompt}”
+                                {context.steps.length > 0
+                                    ? ` · ${context.steps.length} change${context.steps.length === 1 ? '' : 's'}`
+                                    : ''}
+                            </span>
+                            <button
+                                className={cn(
+                                    'cursor-pointer rounded p-0.5 text-violet-500 hover:bg-violet-100 hover:text-violet-800',
+                                    { 'text-violet-800': showContextDsl },
+                                )}
+                                onClick={() => setShowContextDsl((v) => !v)}
+                                aria-pressed={showContextDsl}
+                                aria-label="Show current DSL"
+                                title="Show the DSL the next change starts from"
+                                type="button"
+                            >
+                                <Code2 size={12} />
+                            </button>
+                            <button
+                                className="cursor-pointer rounded p-0.5 text-violet-500 hover:bg-violet-100 hover:text-violet-800"
+                                onClick={() => {
+                                    setShowContextDsl(false);
+                                    resetContext();
+                                }}
+                                aria-label="Start a new template"
+                                title="Start a new template (keeps the conversation)"
+                                type="button"
+                            >
+                                <RotateCcw size={12} />
+                            </button>
+                        </div>
+                        {context.steps.length > 0 ? (
+                            <ol className="mt-1 list-decimal pl-4 text-[10px] text-violet-700">
+                                {context.steps.slice(-4).map((step) => (
+                                    <li className="truncate" key={step}>
+                                        {step}
+                                    </li>
+                                ))}
+                            </ol>
+                        ) : null}
+                        {showContextDsl ? <DslView dsl={context.dsl} /> : null}
+                    </div>
+                ) : null}
                 <div className="mb-2 flex flex-wrap gap-1">
                     {chips.map((chip) => (
                         <button

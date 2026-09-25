@@ -15,18 +15,33 @@ export interface ChatMessage {
     error?: boolean;
 }
 
+export interface ChatContext {
+    prompt: string;
+    dsl: string;
+    steps: string[];
+}
+
 interface ChatState {
     messages: ChatMessage[];
     pending: boolean;
     options: AiOptions;
-    /** The brief and DSL that follow-up instructions refine. */
-    context: { prompt: string; dsl: string } | null;
+    /**
+     * The brief, the current DSL and the follow-up instructions already
+     * applied to it. Every request sends this history so the AI keeps the
+     * company, colour and tone of earlier turns.
+     */
+    context: ChatContext | null;
 
     setOptions: (options: Partial<AiOptions>) => void;
     send: (text: string) => Promise<void>;
     rate: (messageId: string, rating: 1 | -1) => void;
+    /** Keeps the conversation but starts the next prompt from scratch. */
+    resetContext: () => void;
     clear: () => void;
 }
+
+/** Most recent prompts, oldest first, capped to what the server accepts. */
+const HISTORY_LIMIT = 8;
 
 const STORAGE_KEY = 'email-template-builder:chat';
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -42,7 +57,9 @@ const load = (): Pick<ChatState, 'messages' | 'context' | 'options'> => {
         >;
         return {
             messages: Array.isArray(parsed.messages) ? parsed.messages : [],
-            context: parsed.context ?? null,
+            context: parsed.context
+                ? { ...parsed.context, steps: parsed.context.steps ?? [] }
+                : null,
             options: parsed.options ?? { type: 'auto', tone: 'auto' },
         };
     } catch {
@@ -100,13 +117,19 @@ export const useChat = create<ChatState>((set, get) => ({
                 pending: false,
             }));
 
-        const { context, options } = get();
+        const { context, options, messages } = get();
+        // Earlier user turns (this one excluded) give the engines context.
+        const previous = messages
+            .filter((m) => m.role === 'user' && m.id !== user.id)
+            .map((m) => m.text)
+            .slice(-HISTORY_LIMIT);
         try {
             if (wantsSubjects(text)) {
-                const brief = context?.prompt
-                    ? `${context.prompt}. ${text}`
-                    : text;
-                const subjects = await aiSubjects(brief, options);
+                const subjects = await aiSubjects(
+                    text,
+                    options,
+                    context ? [context.prompt, ...context.steps] : previous,
+                );
                 reply({
                     text: 'Here are some subject lines and preheaders you could use:',
                     subjects,
@@ -119,8 +142,15 @@ export const useChat = create<ChatState>((set, get) => ({
                     dsl: context.dsl,
                     instruction: text,
                     options,
+                    history: context.steps.slice(-HISTORY_LIMIT),
                 });
-                set({ context: { prompt: context.prompt, dsl: result.dsl } });
+                set({
+                    context: {
+                        prompt: context.prompt,
+                        dsl: result.dsl,
+                        steps: [...context.steps, text],
+                    },
+                });
                 reply({
                     text:
                         result.applied.length > 0
@@ -130,8 +160,8 @@ export const useChat = create<ChatState>((set, get) => ({
                 });
                 return;
             }
-            const generation = await aiGenerate(text, options);
-            set({ context: { prompt: text, dsl: generation.dsl } });
+            const generation = await aiGenerate(text, options, previous);
+            set({ context: { prompt: text, dsl: generation.dsl, steps: [] } });
             reply({
                 text: `Here's a first draft of “${generation.name}”. Tell me what to change, or apply it to the editor.`,
                 generation: { ...generation, rating: 0 },
@@ -149,6 +179,8 @@ export const useChat = create<ChatState>((set, get) => ({
                     : m,
             ),
         })),
+
+    resetContext: () => set({ context: null }),
 
     clear: () => set({ messages: [], context: null }),
 }));

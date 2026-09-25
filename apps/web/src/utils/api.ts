@@ -66,11 +66,19 @@ export const errorMessage = (error: unknown): string => {
 export const aiHealth = async (): Promise<Health> =>
     (await api.get<Health>('/api/health', { timeout: 5000 })).data;
 
+/** `history`: earlier prompts of the chat, oldest first; they give the engines context. */
 export const aiGenerate = async (
     prompt: string,
     options: AiOptions,
+    history: string[] = [],
 ): Promise<Generation> =>
-    (await api.post<Generation>('/api/ai/generate', { prompt, options })).data;
+    (
+        await api.post<Generation>('/api/ai/generate', {
+            prompt,
+            options,
+            history,
+        })
+    ).data;
 
 export interface Refinement extends Generation {
     applied: string[];
@@ -81,6 +89,7 @@ export const aiRefine = async (input: {
     dsl: string;
     instruction: string;
     options?: AiOptions;
+    history?: string[];
 }): Promise<Refinement> =>
     (await api.post<Refinement>('/api/ai/refine', input)).data;
 
@@ -93,9 +102,15 @@ export interface SubjectIdeas {
 export const aiSubjects = async (
     prompt: string,
     options: AiOptions = {},
+    history: string[] = [],
 ): Promise<SubjectIdeas> =>
-    (await api.post<SubjectIdeas>('/api/ai/subjects', { prompt, options }))
-        .data;
+    (
+        await api.post<SubjectIdeas>('/api/ai/subjects', {
+            prompt,
+            options,
+            history,
+        })
+    ).data;
 
 export const aiExpand = async (
     dsl: string,
