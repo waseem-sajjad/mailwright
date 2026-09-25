@@ -1,5 +1,7 @@
 import type { RGBColor } from 'react-color';
 
+export type { RGBColor };
+
 export type ComponentType =
     | 'Canvas'
     | 'Row'
@@ -13,22 +15,57 @@ export type ComponentType =
     | 'Video'
     | 'Social'
     | 'HTML'
-    | 'Menu';
+    | 'Menu'
+    | 'Spacer';
 
-export interface BaseComponent<T> {
+/** Types that live inside a Column. */
+export type ContentType = Exclude<ComponentType, 'Canvas' | 'Row' | 'Column'>;
+
+/** The plain, serialisable node that every block in the tree is made of. */
+export interface EmailNode<T = any> {
     id: string;
     type: ComponentType;
-    name: string;
-    parent: BaseComponent<any> | null;
-    children: BaseComponent<any>[];
     properties: T;
-
-    addChild: (child: BaseComponent<any>) => void;
-    removeChild: (child: BaseComponent<any>) => void;
+    children: EmailNode[];
 }
 
+export type Align = 'left' | 'center' | 'right';
+
 export type Border = {
-    style: 'solid' | 'dashed' | 'dotted';
+    style: 'none' | 'solid' | 'dashed' | 'dotted';
     color: RGBColor;
     width: number;
+    radius: number;
+};
+
+export type Padding = {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+};
+
+export type ViewMode = 'desktop' | 'tablet' | 'mobile';
+
+/** What kind of thing a droppable slot accepts. */
+export type DropKind = 'row' | 'column' | 'content';
+
+export type DragCardData = {
+    type: 'card';
+    name: ComponentType;
+    kind: DropKind;
+};
+
+export type DragBlockData = {
+    type: 'block';
+    id: string;
+    kind: DropKind;
+};
+
+export type DragData = DragCardData | DragBlockData;
+
+export type SlotData = {
+    kind: DropKind;
+    parentId: string;
+    index: number;
 };
