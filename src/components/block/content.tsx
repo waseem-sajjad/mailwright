@@ -1,7 +1,6 @@
 import type { CanvasProperties, EmailNode } from '@/types';
 import { Container } from '@/components/container';
 import { blockMeta } from '@/components/blocks';
-import { useSettings } from '@/hooks';
 
 import { Divider } from './divider';
 import { Heading } from './heading';
@@ -50,20 +49,16 @@ const render = (node: EmailNode, canvas: CanvasProperties) => {
 };
 
 /** Renders any content block wrapped in its selectable container. */
-export const Content: React.FC<ContentProps> = ({ node, canvas }) => {
-    const view = useSettings((s) => s.view);
-    const hidden =
-        (view === 'mobile' && node.properties.hideOnMobile === true) ||
-        (view !== 'mobile' && node.properties.hideOnDesktop === true);
-
-    return (
-        <Container
-            name={blockMeta[node.type].label}
-            hidden={hidden}
-            kind="content"
-            id={node.id}
-        >
-            {render(node, canvas)}
-        </Container>
-    );
-};
+export const Content: React.FC<ContentProps> = ({ node, canvas }) => (
+    <Container
+        visibility={{
+            hideOnMobile: node.properties.hideOnMobile,
+            hideOnDesktop: node.properties.hideOnDesktop,
+        }}
+        name={blockMeta[node.type].label}
+        kind="content"
+        id={node.id}
+    >
+        {render(node, canvas)}
+    </Container>
+);

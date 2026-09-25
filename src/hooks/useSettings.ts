@@ -18,6 +18,8 @@ interface Settings {
     dragging: boolean;
     sidebarTab: 'blocks' | 'layers';
     toast: ToastMessage | null;
+    /** Render device-hidden blocks dimmed instead of collapsing them. */
+    showHidden: boolean;
 
     setView: (view: ViewMode) => void;
     setHover: (hover: string) => void;
@@ -26,6 +28,7 @@ interface Settings {
     setSidebarTab: (tab: 'blocks' | 'layers') => void;
     notify: (message: string, tone?: ToastMessage['tone']) => void;
     clearToast: () => void;
+    setShowHidden: (showHidden: boolean) => void;
 }
 
 export const VIEW_WIDTH: Record<ViewMode, string> = {
@@ -41,6 +44,7 @@ export const useSettings = create<Settings>((set) => ({
     dragging: false,
     sidebarTab: 'blocks',
     toast: null,
+    showHidden: true,
     setHover: (hover) => set({ hover }),
     setView: (view) => set({ view }),
     setDialog: (dialog) => set({ dialog }),
@@ -49,4 +53,5 @@ export const useSettings = create<Settings>((set) => ({
     notify: (message, tone = 'success') =>
         set({ toast: { message, tone, key: Date.now() } }),
     clearToast: () => set({ toast: null }),
+    setShowHidden: (showHidden) => set({ showHidden }),
 }));

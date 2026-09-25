@@ -3,11 +3,13 @@ import {
     ChevronDown,
     ChevronUp,
     Copy,
+    Eye,
+    EyeOff,
     GripVertical,
     Trash2,
 } from 'lucide-react';
 
-import type { DragBlockData, DropKind } from '@/types';
+import type { DragBlockData, DropKind, Visibility } from '@/types';
 import { useEmail, useSettings } from '@/hooks';
 import { cn, findParent } from '@/utils';
 
@@ -17,8 +19,8 @@ interface ContainerProps extends React.ComponentPropsWithRef<'div'> {
     kind: DropKind;
     /** Where the toolbar sits relative to the block. */
     toolbar?: 'top' | 'bottom';
-    /** Block is hidden on the current preview device. */
-    hidden?: boolean;
+    /** Visibility flags of the block; enables the hide toggle and badges. */
+    visibility?: Visibility;
 }
 
 const ToolbarButton: React.FC<
@@ -46,18 +48,40 @@ export const Container: React.FC<ContainerProps> = ({
     name,
     kind,
     toolbar = 'top',
-    hidden = false,
+    visibility,
     className,
     children,
     style,
     ...props
 }) => {
-    const { hover, setHover, dragging } = useSettings();
+    const { hover, setHover, dragging, view, showHidden } = useSettings();
     const activeId = useEmail((s) => s.activeId);
     const root = useEmail((s) => s.root);
-    const { setActive, removeNode, duplicateNode, moveNode } = useEmail();
+    const { setActive, removeNode, duplicateNode, moveNode, updateProperties } =
+        useEmail();
     const active = activeId === id;
     const over = hover === id && !dragging;
+
+    const onMobile = view === 'mobile';
+    const hiddenHere =
+        visibility !== undefined &&
+        ((onMobile && visibility.hideOnMobile === true) ||
+            (!onMobile && visibility.hideOnDesktop === true));
+    const hiddenElsewhere =
+        visibility !== undefined &&
+        !hiddenHere &&
+        ((onMobile && visibility.hideOnDesktop === true) ||
+            (!onMobile && visibility.hideOnMobile === true));
+    const deviceLabel = onMobile ? 'mobile' : 'desktop';
+    const collapsed = hiddenHere && !showHidden;
+
+    const toggleHiddenHere = () => {
+        if (!visibility) return;
+        const patch: Visibility = onMobile
+            ? { hideOnMobile: !visibility.hideOnMobile }
+            : { hideOnDesktop: !visibility.hideOnDesktop };
+        updateProperties<Visibility>(id, patch);
+    };
 
     const data: DragBlockData = { type: 'block', id, kind };
     const drag = useDraggable({ id: `block:${id}`, data });
@@ -79,7 +103,7 @@ export const Container: React.FC<ContainerProps> = ({
                     'outline-blue-400': active,
                     'outline-blue-300/70': over && !active,
                     'opacity-40': drag.isDragging,
-                    'opacity-30 grayscale': hidden,
+                    'opacity-40 grayscale': hiddenHere && !collapsed,
                 },
                 className,
             )}
@@ -155,6 +179,26 @@ export const Container: React.FC<ContainerProps> = ({
                             >
                                 <Copy size={14} />
                             </ToolbarButton>
+                            {visibility ? (
+                                <ToolbarButton
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleHiddenHere();
+                                    }}
+                                    title={
+                                        hiddenHere
+                                            ? `Show on ${deviceLabel}`
+                                            : `Hide on ${deviceLabel}`
+                                    }
+                                    aria-label="Toggle visibility on this device"
+                                >
+                                    {hiddenHere ? (
+                                        <Eye size={14} />
+                                    ) : (
+                                        <EyeOff size={14} />
+                                    )}
+                                </ToolbarButton>
+                            ) : null}
                             <ToolbarButton
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -180,12 +224,29 @@ export const Container: React.FC<ContainerProps> = ({
                     ) : null}
                 </div>
             ) : null}
-            {hidden ? (
-                <span className="pointer-events-none absolute top-1 right-1 z-10 rounded bg-gray-700/80 px-1.5 py-0.5 text-[10px] text-white">
-                    Hidden on this device
+            {hiddenHere && !collapsed ? (
+                <span className="pointer-events-none absolute top-1 right-1 z-10 flex items-center gap-1 rounded bg-gray-800/85 px-1.5 py-0.5 text-[10px] text-white">
+                    <EyeOff size={10} /> Hidden on {deviceLabel}
                 </span>
             ) : null}
-            <div ref={drag.setNodeRef}>{children}</div>
+            {hiddenElsewhere ? (
+                <span
+                    className="pointer-events-none absolute top-1 right-1 z-10 flex items-center gap-1 rounded bg-white/90 px-1.5 py-0.5 text-[10px] text-gray-500 ring-1 ring-gray-300"
+                    title={`Hidden on ${onMobile ? 'desktop' : 'mobile'}`}
+                >
+                    <EyeOff size={10} /> {onMobile ? 'desktop' : 'mobile'}
+                </span>
+            ) : null}
+            {collapsed ? (
+                <div
+                    className="flex h-7 items-center justify-center gap-1.5 border border-dashed border-gray-400 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(0,0,0,0.04)_6px,rgba(0,0,0,0.04)_12px)] text-[11px] text-gray-500"
+                    ref={drag.setNodeRef}
+                >
+                    <EyeOff size={12} /> {name} hidden on {deviceLabel}
+                </div>
+            ) : (
+                <div ref={drag.setNodeRef}>{children}</div>
+            )}
         </div>
     );
 };

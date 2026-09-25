@@ -5,6 +5,7 @@ import {
     Copy,
     Download,
     Eye,
+    EyeOff,
     FileDown,
     FileJson,
     FilePlus2,
@@ -292,7 +293,7 @@ const ExportButton: React.FC = () => {
 export const Header: React.FC = () => {
     const { name, setName } = useEmail();
     const savedAt = useEmail((s) => s.savedAt);
-    const { setDialog } = useSettings();
+    const { setDialog, showHidden, setShowHidden } = useSettings();
 
     return (
         <header className="flex h-10 items-center justify-between border-b border-gray-300 bg-hover">
@@ -331,6 +332,27 @@ export const Header: React.FC = () => {
                     label="Mobile view"
                     mode="mobile"
                 />
+                <button
+                    className={cn(
+                        'ml-2 flex h-7 cursor-pointer items-center gap-1 rounded border px-2 text-[11px] transition-colors',
+                        showHidden
+                            ? 'border-gray-300 bg-white text-gray-600 hover:text-gray-900'
+                            : 'border-amber-300 bg-amber-50 text-amber-700',
+                    )}
+                    title={
+                        showHidden
+                            ? 'Hidden blocks are shown dimmed. Click to collapse them.'
+                            : 'Hidden blocks are collapsed. Click to show them dimmed.'
+                    }
+                    onClick={() => setShowHidden(!showHidden)}
+                    aria-pressed={!showHidden}
+                    type="button"
+                >
+                    {showHidden ? <Eye size={13} /> : <EyeOff size={13} />}
+                    <span className="hidden xl:inline">
+                        {showHidden ? 'Showing hidden' : 'Hidden collapsed'}
+                    </span>
+                </button>
             </section>
 
             <section className="flex h-full flex-1 items-center justify-end gap-1.5 px-3">
