@@ -65,6 +65,36 @@ export const useShortcuts = (): void => {
                 return;
             }
 
+            if (meta && key === 'c' && !isRoot) {
+                event.preventDefault();
+                email.copyNode(email.activeId);
+                return;
+            }
+
+            if (meta && key === 'v') {
+                event.preventDefault();
+                email.pasteNode();
+                return;
+            }
+
+            if (key === 'arrowup' || key === 'arrowdown') {
+                event.preventDefault();
+                email.selectSibling(key === 'arrowup' ? -1 : 1);
+                return;
+            }
+
+            if (key === 'arrowleft') {
+                event.preventDefault();
+                email.selectParent();
+                return;
+            }
+
+            if (key === 'arrowright') {
+                event.preventDefault();
+                email.selectChild();
+                return;
+            }
+
             if (meta && key === 'p') {
                 event.preventDefault();
                 settings.setDialog('preview');

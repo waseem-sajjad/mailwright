@@ -9,6 +9,7 @@ import type {
 } from '@/types';
 import {
     applyLayout,
+    cloneNode,
     createCanvas,
     createNode,
     debounce,
@@ -25,6 +26,19 @@ import {
 } from '@/utils';
 
 const HISTORY_LIMIT = 100;
+
+const findPathIds = (root: CanvasNode, id: string): string[] => {
+    const walk = (node: EmailNode, trail: string[]): string[] | null => {
+        const next = [...trail, node.id];
+        if (node.id === id) return next;
+        for (const child of node.children) {
+            const found = walk(child, next);
+            if (found) return found;
+        }
+        return null;
+    };
+    return walk(root, []) ?? [];
+};
 
 interface EmailState {
     root: CanvasNode;
@@ -59,6 +73,18 @@ interface EmailState {
     redo: () => void;
     load: (root: CanvasNode, name?: string) => void;
     reset: () => void;
+
+    /** Block copied with Ctrl+C; kept in memory only. */
+    clipboard: EmailNode | null;
+    copyNode: (id: string) => void;
+    pasteNode: () => void;
+    reorderColumn: (rowId: string, from: number, to: number) => void;
+    /** Id of a freshly added text block that should grab focus. */
+    pendingFocus: string | null;
+    clearPendingFocus: () => void;
+    selectSibling: (direction: -1 | 1) => void;
+    selectParent: () => void;
+    selectChild: () => void;
 }
 
 type Setter = (
@@ -103,6 +129,8 @@ export const useEmail = create<EmailState>((set, get) => {
         future: [],
         transient: false,
         savedAt: saved?.updatedAt ?? null,
+        clipboard: null,
+        pendingFocus: null,
 
         setName: (name) => set({ name }),
 
@@ -130,7 +158,109 @@ export const useEmail = create<EmailState>((set, get) => {
             run(
                 (root) => insertNode(root, parentId, node, index) as CanvasNode,
             );
-            set({ activeId: node.id });
+            set({
+                activeId: node.id,
+                pendingFocus:
+                    type === 'Heading' || type === 'Text' ? node.id : null,
+            });
+        },
+
+        clearPendingFocus: () => set({ pendingFocus: null }),
+
+        copyNode: (id) => {
+            const node = findNode(get().root, id);
+            if (!node || node.type === 'Canvas' || node.type === 'Column')
+                return;
+            set({ clipboard: cloneNode(node) });
+        },
+
+        pasteNode: () => {
+            const { clipboard, root, activeId } = get();
+            if (!clipboard) return;
+            const active = findNode(root, activeId) ?? root;
+            const copy = cloneNode(clipboard);
+            let target: { parentId: string; index?: number } | null = null;
+
+            if (copy.type === 'Row') {
+                // Paste after the row that contains the selection.
+                const path = findPathIds(root, active.id);
+                const rowId = path.find(
+                    (id) => findNode(root, id)?.type === 'Row',
+                );
+                if (rowId) {
+                    const location = findParent(root, rowId);
+                    target = location
+                        ? { parentId: root.id, index: location.index + 1 }
+                        : null;
+                } else {
+                    target = { parentId: root.id };
+                }
+            } else if (active.type === 'Column') {
+                target = { parentId: active.id };
+            } else if (active.type === 'Row' && active.children[0]) {
+                target = { parentId: active.children[0].id };
+            } else if (active.type === 'Canvas') {
+                const column = root.children[0]?.children[0];
+                target = column ? { parentId: column.id } : null;
+            } else {
+                const location = findParent(root, active.id);
+                target = location
+                    ? {
+                          parentId: location.parent.id,
+                          index: location.index + 1,
+                      }
+                    : null;
+            }
+
+            if (!target) return;
+            get().insertNode(copy, target.parentId, target.index);
+        },
+
+        reorderColumn: (rowId, from, to) =>
+            run(
+                (root) =>
+                    mapNode(root, rowId, (row) => {
+                        const children = [...row.children];
+                        const layout = [...(row as RowNode).properties.layout];
+                        if (
+                            from < 0 ||
+                            to < 0 ||
+                            from >= children.length ||
+                            to >= children.length
+                        ) {
+                            return row;
+                        }
+                        const [child] = children.splice(from, 1);
+                        children.splice(to, 0, child);
+                        const [width] = layout.splice(from, 1);
+                        layout.splice(to, 0, width);
+                        return {
+                            ...row,
+                            properties: { ...row.properties, layout },
+                            children,
+                        };
+                    }) as CanvasNode,
+            ),
+
+        selectSibling: (direction) => {
+            const { root, activeId } = get();
+            const location = findParent(root, activeId);
+            if (!location) return;
+            const sibling =
+                location.parent.children[location.index + direction];
+            if (sibling) set({ activeId: sibling.id });
+        },
+
+        selectParent: () => {
+            const { root, activeId } = get();
+            const location = findParent(root, activeId);
+            if (location) set({ activeId: location.parent.id });
+        },
+
+        selectChild: () => {
+            const { root, activeId } = get();
+            const node = findNode(root, activeId);
+            if (node?.children[0]) set({ activeId: node.children[0].id });
         },
 
         insertNode: (node, parentId, index) => {
