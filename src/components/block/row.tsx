@@ -1,66 +1,58 @@
-import { cn, contentAlign, rgbaToHex } from '@/utils';
+import type { CanvasProperties, ColumnNode, RowNode } from '@/types';
+import { cn, contentAlign, paddingCss, rgbaToCss } from '@/utils';
 import { Container } from '@/components/container';
-import type { RowComponentType } from '@/types';
-import { useEmail, useSettings } from '@/hooks';
+import { useSettings } from '@/hooks';
 
 import { Column } from './column';
 
-export const Row: React.FC<{
-    row: RowComponentType;
-}> = ({ row }) => {
-    const { setActive, active } = useEmail();
+export const Row: React.FC<{ row: RowNode; canvas: CanvasProperties }> = ({
+    row,
+    canvas,
+}) => {
     const { view } = useSettings();
-
-    if (!row.parent) return null;
+    const p = row.properties;
+    const stacked = p.stack && view === 'mobile';
 
     return (
         <Container
-            onClick={() => {
-                setActive(row);
+            style={{
+                backgroundColor: rgbaToCss(p.backgroundColor),
+                backgroundImage: p.backgroundImage
+                    ? `url('${p.backgroundImage}')`
+                    : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
             }}
-            active={row.id === active.id}
             id={row.id}
+            kind="row"
             name="Row"
-            className={cn({
-                'flex w-[150%] -translate-x-1/6 flex-col items-center justify-center':
-                    view === 'mobile',
-            })}
         >
-            <div
-                className={cn('w-full', {
-                    'w-[320px]': view === 'mobile',
-                })}
-            >
+            <div style={{ padding: paddingCss(p.padding) }}>
                 <div
                     style={{
-                        padding: `${row.properties.paddingTop}px ${row.properties.paddingRight}px ${row.properties.paddingBottom}px ${row.properties.paddingLeft}px`,
-                        backgroundColor: rgbaToHex(
-                            row.properties.backgroundColor,
-                        ),
-                        margin: contentAlign(row.properties.contentAlign),
-                        maxWidth: row.parent.properties.contentWidth,
+                        margin: contentAlign(p.contentAlign),
+                        maxWidth: canvas.contentWidth,
+                        backgroundColor: rgbaToCss(p.contentBackgroundColor),
                     }}
-                    className={cn(
-                        'flex transition-all duration-300 ease-in-out',
-                        {
-                            'flex-col':
-                                row.properties.stack === true &&
-                                view === 'mobile',
-                        },
-                    )}
+                    className={cn('flex transition-all duration-300', {
+                        'flex-col': stacked,
+                    })}
                 >
-                    {row.children?.map((column) => (
+                    {row.children.map((column) => (
                         <div
                             style={{
-                                width:
-                                    row.properties.stack === true &&
-                                    view === 'mobile'
-                                        ? '100%'
-                                        : column.properties.width,
+                                width: stacked
+                                    ? '100%'
+                                    : `${column.properties.width}%`,
+                                flexShrink: 0,
                             }}
                             key={column.id}
                         >
-                            <Column column={column} />
+                            <Column
+                                column={column as ColumnNode}
+                                canvas={canvas}
+                                row={row}
+                            />
                         </div>
                     ))}
                 </div>
