@@ -153,13 +153,24 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 - AI: `src/ai.ts` tries the Python model service (`AI_URL`, `ai/serve.py`)
   and falls back to `src/generator.ts` (rules). Both emit the DSL in
   `src/dsl.ts`; `dslToTree` expands it into a normalised canvas tree.
+- Model text codec: T5 drops newlines and braces, so `src/prompts.ts`
+  (`encodeForModel`/`decodeFromModel`, mirrored in `ai/codec.py`) swaps them
+  for ` @@ ` and `[[tag]]`. `repairDsl()` also fixes flat output from older
+  checkpoints. Change the codec in both places and retrain.
+- Chat context: generate/refine/subjects bodies accept `history` (earlier
+  prompts, max 10). `withHistory()` in `generator.ts` fills company, brand
+  colour, tone and type the new prompt leaves open; the web sends previous
+  user turns (generate) or the applied instructions (refine) from
+  `useChat.context.steps`.
 - Dataset = rules engine output + 👍-rated generations (`pnpm dataset`).
   Training is Python (`ai/train.py`, GPU auto-detected, bf16 on CUDA).
 - Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
   (`components/chat.tsx`, state in `hooks/useChat.ts`, persisted to
   localStorage). First message generates; later messages that look like
   edits call `/api/ai/refine` with the last DSL; "subject line" requests call
-  `/api/ai/subjects`. The template library is server-only
+  `/api/ai/subjects`. Each generation card has a DSL toggle (`DslView`) and
+  the context bar above the composer shows the brief, applied changes, the
+  current DSL and a reset (`resetContext`). The template library is server-only
   (`components/library.tsx`): screenshots via `captureCanvas()`
   (`html-to-image`; `data-editor-only` elements are skipped) with a live
   scaled iframe as fallback thumbnail. There is no localStorage library.

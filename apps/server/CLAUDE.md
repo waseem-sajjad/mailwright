@@ -14,9 +14,9 @@ generation, a template library with screenshots, and generation history.
 ## Layout
 
 - `src/app.ts` – routes. Every body/param goes through a zod schema in `src/schemas.ts` via `validate()`.
-- `src/ai.ts` – engines: axios call to the Python model service (`AI_URL`, default http://127.0.0.1:8000, `off` disables), fallback to the rules engine. `generate()` and `refine()`.
+- `src/ai.ts` – engines: axios call to the Python model service (`AI_URL`, default http://127.0.0.1:8000, `off` disables), fallback to the rules engine. `generate()` and `refine()` take `history` (earlier chat prompts); `withHistory()` in `generator.ts` derives company/brand/tone/type from it.
 - `src/refine.ts` – rules-based follow-up edits (tone, colours, header style, add/remove blocks, button/heading/title text, shorten). Also synthesises refinement training pairs.
-- `src/subjects.ts` – subject line / preheader ideas. `src/seed.ts` – starter templates seeded into an empty library. `src/prompts.ts` – prompt formats shared with `ai/serve.py`.
+- `src/subjects.ts` – subject line / preheader ideas. `src/seed.ts` – starter templates seeded into an empty library. `src/prompts.ts` – prompt formats plus the T5 text codec (`encodeForModel`/`decodeFromModel`/`repairDsl`, mirrored in `ai/codec.py`).
 - `src/generator.ts` – rules engine (prompt analysis + blueprints + copy banks). Also the dataset source.
 - `src/dsl.ts` – the compact template DSL: `parseDsl`, `dslToTree`, `stringifyDsl`.
 - `src/db.ts` – SQLite tables `templates` and `generations`; `DATA_DIR` (default `data/`).
