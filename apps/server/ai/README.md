@@ -27,12 +27,31 @@ the model improves as people use it. Retrain after collecting feedback.
 
 ### On your PC with an NVIDIA GPU (recommended: RTX 4060 8 GB, 32 GB RAM)
 
+Works from WSL2 (Ubuntu) exactly like native Linux. Requirements:
+
+- The **Windows** NVIDIA driver (Game Ready or Studio). Do **not** install a
+  Linux driver inside WSL; the GPU is exposed through `/dev/dxg`.
+- `nvidia-smi` inside WSL should list the RTX 4060. If it does not, update the
+  Windows driver and run `wsl --shutdown` from PowerShell.
+- `sudo apt install python3-venv python3-pip` once.
+- WSL caps RAM at half of the machine by default. For comfortable training
+  put this in `C:\Users\<you>\.wslconfig`, then `wsl --shutdown`:
+
+  ```ini
+  [wsl2]
+  memory=24GB
+  processors=8
+  ```
+
 ```bash
 cd apps/server
-python3 -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -r ai/requirements-gpu.txt                # CUDA 12.4 wheels
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r ai/requirements-gpu.txt                # CUDA 12.4 wheels (~3 GB download)
 python3 ai/pipeline.py --count 8000 --epochs 4        # dataset → train → smoke test
 ```
+
+The Windows browser reaches WSL ports directly, so `pnpm dev` (3000 / 8787)
+and `uvicorn` (8000) all work at `http://localhost:…` from Windows.
 
 `train.py` detects CUDA and switches to `google/flan-t5-base` (250M params)
 with bf16 and batch 16; 8k examples × 4 epochs takes about 10 minutes on a
