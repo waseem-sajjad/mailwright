@@ -1,4 +1,8 @@
-import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core';
+import type {
+    CollisionDetection,
+    DragEndEvent,
+    DragStartEvent,
+} from '@dnd-kit/core';
 import {
     closestCenter,
     DndContext,
@@ -61,7 +65,7 @@ export const Dnd: React.FC<React.PropsWithChildren> = ({ children }) => {
 
     return (
         <DndContext
-            onDragStart={(event) => {
+            onDragStart={(event: DragStartEvent) => {
                 setDragging(true);
                 setDragData(event.active.data.current as DragData);
             }}
