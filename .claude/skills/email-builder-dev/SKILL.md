@@ -74,7 +74,18 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 - Canvas blocks: `src/components/block/*.tsx`, dispatched by `block/content.tsx`
   and wrapped in `Container` (hover/active outline, toolbar).
 - Heading/Text use `block/editable.tsx` (contentEditable). The DOM is the source
-  of truth while focused; never pass `dangerouslySetInnerHTML` to it.
+  of truth while focused; never pass `dangerouslySetInnerHTML` to it. The block
+  records its selection via `src/utils/selection.ts`; anything that must act on
+  that selection after focus moved (toolbar, tag picker) calls `execOnEditable`
+  and, for menus, passes `preserveFocus` to `Menu`.
+- Plain inputs that should accept merge tags use `TagInput`
+  (`components/ui/taginput.tsx`), which inserts `{{tag}}` at the caret.
+- Device visibility on the canvas is handled entirely by `Container`: pass
+  `visibility={{ hideOnMobile, hideOnDesktop }}` and it dims, badges, offers a
+  toolbar toggle, and collapses the block when `useSettings().showHidden` is
+  off (header eye toggle).
+- Toggles use `Switch`/`CheckBox` from `components/ui/checkbox.tsx`, a
+  `button[role=switch]`; do not reintroduce peer/pseudo-element switches.
 - Header actions live in `src/layout/header.tsx` (History, FileMenu,
   ExportButton). Dropdowns use `Menu` from `components/ui/menu.tsx`
   (popover-based; `Menu.Item` closes on select). Transient feedback goes
