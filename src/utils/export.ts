@@ -16,6 +16,7 @@ import type {
     SpacerProperties,
     TextProperties,
     VideoProperties,
+    Visibility,
 } from '@/types';
 
 import {
@@ -47,12 +48,26 @@ const resolveColor = (
 const bgAttr = (color: Parameters<typeof rgbaToCss>[0]): string =>
     isTransparent(color) ? '' : ` bgcolor="${rgbaToCss(color)}"`;
 
+/** CSS classes that the media query uses to hide a block per device. */
+const visibilityClass = (p: Visibility): string => {
+    const classes: string[] = [];
+    if (p.hideOnMobile) classes.push('hide-mobile');
+    if (p.hideOnDesktop) classes.push('hide-desktop');
+    return classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
+};
+
+const visibilityStyle = (p: Visibility): string =>
+    p.hideOnDesktop
+        ? 'display:none;max-height:0;overflow:hidden;mso-hide:all;'
+        : '';
+
 const wrap = (
     inner: string,
     padding: { top: number; right: number; bottom: number; left: number },
     align: Align = 'left',
+    p: Visibility = {},
 ): string =>
-    `<table ${TABLE} width="100%"><tr><td align="${align}" style="padding:${paddingCss(padding)};">${inner}</td></tr></table>`;
+    `<table ${TABLE} width="100%"${visibilityClass(p)} style="${visibilityStyle(p)}"><tr><td align="${align}" style="padding:${paddingCss(padding)};">${inner}</td></tr></table>`;
 
 const renderHeading = (p: HeadingProperties, ctx: Context): string => {
     const style = [
@@ -69,6 +84,7 @@ const renderHeading = (p: HeadingProperties, ctx: Context): string => {
         `<${p.level} style="${style};">${p.text}</${p.level}>`,
         p.padding,
         p.align,
+        p,
     );
 };
 
@@ -83,7 +99,12 @@ const renderText = (p: TextProperties, ctx: Context): string => {
         `color:${resolveColor(p.inheritColor, p.color, ctx)}`,
         `text-align:${p.align}`,
     ].join(';');
-    return wrap(`<div style="${style};">${p.text}</div>`, p.padding, p.align);
+    return wrap(
+        `<div style="${style};">${p.text}</div>`,
+        p.padding,
+        p.align,
+        p,
+    );
 };
 
 const renderDivider = (p: DividerProperties): string =>
@@ -91,6 +112,7 @@ const renderDivider = (p: DividerProperties): string =>
         `<table ${TABLE} width="${p.width}%" align="${p.align}" style="width:${p.width}%;"><tr><td style="border-top:${p.thickness}px ${p.style} ${rgbaToCss(p.color)};font-size:0;line-height:0;">&nbsp;</td></tr></table>`,
         p.padding,
         p.align,
+        p,
     );
 
 const renderButton = (p: ButtonProperties, ctx: Context): string => {
@@ -121,6 +143,7 @@ const renderButton = (p: ButtonProperties, ctx: Context): string => {
         `<table ${TABLE} align="${p.align}"${width}><tr><td${bgAttr(p.backgroundColor)} style="${cellStyle};"><a href="${escapeHtml(p.href)}" target="${p.target}" style="${linkStyle};">${escapeHtml(p.text)}</a></td></tr></table>`,
         p.padding,
         p.align,
+        p,
     );
 };
 
@@ -142,6 +165,7 @@ const renderList = (p: ListProperties, ctx: Context): string => {
         `<${tag} style="${style};">${items}</${tag}>`,
         p.padding,
         p.align,
+        p,
     );
 };
 
@@ -161,7 +185,7 @@ const renderImage = (p: ImageProperties, ctx: Context): string => {
     if (p.href) {
         img = `<a href="${escapeHtml(p.href)}" target="_blank" style="display:inline-block;">${img}</a>`;
     }
-    return wrap(img, p.padding, p.align);
+    return wrap(img, p.padding, p.align, p);
 };
 
 const renderVideo = (p: VideoProperties, ctx: Context): string => {
@@ -177,11 +201,12 @@ const renderVideo = (p: VideoProperties, ctx: Context): string => {
             `<a href="${escapeHtml(p.url)}" target="_blank" style="display:inline-block;">${img}</a>`,
             p.padding,
             p.align,
+            p,
         );
     }
     const play = `<a href="${escapeHtml(p.url)}" target="_blank" style="display:inline-block;width:64px;height:64px;line-height:64px;border-radius:32px;background-color:rgba(0,0,0,0.6);color:#ffffff;font-size:28px;text-align:center;text-decoration:none;font-family:Arial,sans-serif;">&#9654;</a>`;
     const inner = `<!--[if mso]><a href="${escapeHtml(p.url)}">${img}</a><![endif]--><!--[if !mso]><!--><table ${TABLE} width="${px}" style="width:${px}px;max-width:100%;background-image:url('${escapeHtml(thumb)}');background-size:cover;background-position:center;" background="${escapeHtml(thumb)}"><tr><td align="center" valign="middle" height="${height}" style="height:${height}px;">${play}</td></tr></table><!--<![endif]-->`;
-    return wrap(inner, p.padding, p.align);
+    return wrap(inner, p.padding, p.align, p);
 };
 
 const socialRadius = (shape: SocialProperties['shape'], size: number) => {
@@ -209,10 +234,12 @@ const renderSocial = (p: SocialProperties): string => {
         `<table ${TABLE} align="${p.align}"><tr>${cells}</tr></table>`,
         p.padding,
         p.align,
+        p,
     );
 };
 
-const renderHtml = (p: HtmlProperties): string => wrap(p.html, p.padding);
+const renderHtml = (p: HtmlProperties): string =>
+    wrap(p.html, p.padding, 'left', p);
 
 const renderMenu = (p: MenuProperties, ctx: Context): string => {
     const linkStyle = [
@@ -249,11 +276,11 @@ const renderMenu = (p: MenuProperties, ctx: Context): string => {
             .join('');
         inner = `<table ${TABLE} align="${p.align}">${rows}</table>`;
     }
-    return wrap(inner, p.padding, p.align);
+    return wrap(inner, p.padding, p.align, p);
 };
 
 const renderSpacer = (p: SpacerProperties): string =>
-    `<div style="height:${p.height}px;line-height:${p.height}px;font-size:0;">&nbsp;</div>`;
+    `<div${visibilityClass(p)} style="height:${p.height}px;line-height:${p.height}px;font-size:0;${visibilityStyle(p)}">&nbsp;</div>`;
 
 export const renderContent = (node: EmailNode, ctx: Context): string => {
     switch (node.type) {
@@ -334,7 +361,7 @@ const renderRow = (row: RowNode, ctx: Context): string => {
         : '';
 
     return [
-        `<table ${TABLE} width="100%"${bgAttr(p.backgroundColor)}${bgImage} style="${outerStyle};">`,
+        `<table ${TABLE} width="100%"${visibilityClass(p)}${bgAttr(p.backgroundColor)}${bgImage} style="${outerStyle};${visibilityStyle(p)}">`,
         `<tr><td align="${p.contentAlign}" style="padding:${paddingCss(p.padding)};">`,
         `<!--[if mso]><table ${TABLE} width="${w}" align="${p.contentAlign}"><tr><td><![endif]-->`,
         `<table ${TABLE} width="100%"${bgAttr(p.contentBackgroundColor)} class="container" style="${innerStyle};"><tr>`,
@@ -345,8 +372,22 @@ const renderRow = (row: RowNode, ctx: Context): string => {
     ].join('\n');
 };
 
+export interface ExportOptions {
+    /** Collapse whitespace between tags. */
+    minify?: boolean;
+}
+
+const minifyHtml = (html: string): string =>
+    html
+        .replace(/<!--(?!\[if)(?!<!)[\s\S]*?-->/g, '')
+        .replace(/\n\s*/g, '')
+        .replace(/>\s{2,}</g, '> <');
+
 /** Renders the whole document as email-client-friendly HTML. */
-export const exportHtml = (root: CanvasNode): string => {
+export const exportHtml = (
+    root: CanvasNode,
+    options: ExportOptions = {},
+): string => {
     const canvas = root.properties;
     const ctx: Context = { canvas, contentWidth: canvas.contentWidth };
     const rows = root.children
@@ -360,7 +401,7 @@ export const exportHtml = (root: CanvasNode): string => {
         ? ''
         : `background-color:${rgbaToCss(canvas.contentBackgroundColor)};`;
 
-    return `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="UTF-8" />
@@ -380,6 +421,9 @@ a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !im
 @media only screen and (max-width: ${canvas.contentWidth + 20}px) {
   .container { width: 100% !important; max-width: 100% !important; }
   .stack { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+  .hide-mobile { display: none !important; max-height: 0 !important; overflow: hidden !important; }
+  .hide-desktop { display: table !important; max-height: none !important; overflow: visible !important; }
+  div.hide-desktop { display: block !important; }
 }
 </style>
 </head>
@@ -392,6 +436,8 @@ ${rows}
 </table>
 </body>
 </html>`;
+
+    return options.minify ? minifyHtml(html) : html;
 };
 
 export const exportJson = (root: CanvasNode, name: string): string =>
