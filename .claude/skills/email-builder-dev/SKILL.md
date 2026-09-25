@@ -33,6 +33,16 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 - Defaults for every block are factory functions in `src/utils/factory.ts`.
   Row layouts are percentage arrays (`COLUMN_LAYOUTS`); `applyLayout` reshapes
   a row's columns while preserving content.
+- Schema changes: add new properties as optional OR add a default in the
+  factory. `normalizeNode` (factory.ts) deep-merges defaults into any loaded
+  document (autosave, JSON import, library) so older saves keep working. Every
+  load path must go through it.
+- Rows and content blocks share `Visibility` (`hideOnMobile`/`hideOnDesktop`);
+  the generic `VisibilityFields` section is rendered by `panel.tsx`, not by
+  each property panel.
+- Merge tags live on the canvas (`CanvasProperties.mergeTags`) and are written
+  into text as `{{tag}}`; `src/utils/mergeTags.ts` substitutes samples for the
+  preview only. Export leaves them untouched.
 
 ## State (`src/hooks/useEmail.ts`)
 
@@ -44,6 +54,10 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
   file; nothing else should write storage.
 - In components use `useNodeProps(node)` (`src/hooks/useNodeProps.ts`) which
   gives `{ p, set, setTransient, commit }` bound to that node.
+- Other store actions: `copyNode`/`pasteNode` (in-memory clipboard; paste
+  targets the sensible parent of the selection), `reorderColumn`,
+  `selectSibling`/`selectParent`/`selectChild` (arrow keys), `pendingFocus`
+  (newly added Heading/Text grabs focus via `block/editable.tsx`).
 
 ## Drag and drop (`src/components/dnd.tsx`)
 
@@ -64,8 +78,14 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 - Settings panels: `src/components/property/*.tsx`, registered in
   `property/index.tsx`. Panels are keyed by node id so local state resets on
   selection change.
-- HTML export: `src/utils/export.ts`. Follow the `email-html-compat` skill for
-  anything you add there. Preview uses the same exporter in a sandboxed iframe.
+- HTML export: `src/utils/export.ts` (`exportHtml(root, { minify })`). Follow
+  the `email-html-compat` skill for anything you add there. Preview uses the
+  same exporter in a sandboxed iframe.
+- Pre-flight checks: `src/utils/lint.ts` `checkDocument(root)` returns
+  `Issue[]` shown in the export dialog. Add a case there when a new block can
+  ship broken (missing URL, embedded image, script tag...).
+- Template library: `src/utils/library.ts` persists user templates in
+  localStorage under `email-template-builder:library`.
 
 ## Add a new block type (checklist)
 

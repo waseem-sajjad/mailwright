@@ -12,8 +12,10 @@ Vite + React 19 + TypeScript + Zustand + dnd-kit + Tailwind 4. Package manager i
 ## Layout
 
 - `src/types` – `EmailNode` tree types and every block's properties
-- `src/utils` – `tree.ts` (immutable tree ops), `factory.ts` (defaults, layouts),
-  `export.ts` (HTML exporter), `templates.ts` (starter templates), `storage.ts`
+- `src/utils` – `tree.ts` (immutable tree ops), `factory.ts` (defaults, layouts,
+  `normalizeNode` migration), `export.ts` (HTML exporter), `templates.ts`
+  (starter templates), `library.ts` (saved templates), `lint.ts` (pre-flight
+  checks), `mergeTags.ts`, `storage.ts`
 - `src/hooks` – `useEmail` (document + undo/redo + autosave), `useSettings`
   (view, dialogs, drag state), `useShortcuts`, `useNodeProps`
 - `src/components/block` – canvas renderers; `property` – settings panels;
@@ -29,4 +31,5 @@ Vite + React 19 + TypeScript + Zustand + dnd-kit + Tailwind 4. Package manager i
 
 - Never mutate nodes; use `src/utils/tree.ts` helpers.
 - Keystroke-level edits go through `setTransient` + `commit()` so undo stays sane.
+- Any new property needs a factory default; every document load goes through `normalizeNode`.
 - Prettier owns formatting; keep its configs last in `eslint.config.js`.

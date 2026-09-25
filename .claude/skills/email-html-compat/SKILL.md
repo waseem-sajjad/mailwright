@@ -39,6 +39,16 @@ some contexts, no `<head>` fonts), Apple Mail, and Android/iOS clients.
   render in Outlook desktop; treat them as progressive enhancement and provide a
   plain fallback (the video block shows the pattern with `<!--[if mso]>`).
 
+## Per-device visibility
+
+- Every content wrapper table and row table may carry `class="hide-mobile"`
+  and/or `class="hide-desktop"` via `visibilityClass(p)`.
+- `hide-desktop` blocks are hidden by default with inline
+  `display:none;max-height:0;overflow:hidden;mso-hide:all` and re-shown in the
+  media query (`display:table !important`, `div.hide-desktop` gets `block`).
+  Outlook desktop ignores media queries, so mobile-only content never shows
+  there and desktop-only content always does; that is expected.
+
 ## Images and media
 
 - `<img>` must have `display:block`, `border:0`, explicit `width` attribute in
