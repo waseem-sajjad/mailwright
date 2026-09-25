@@ -1,7 +1,13 @@
+import { Upload } from 'lucide-react';
+import { useRef } from 'react';
+
 import { useNodeProps } from '@/hooks';
+
 import type { ImageNode } from '@/types';
+import { readFileAsDataUrl } from '@/utils';
 import {
     AlignGroup,
+    Button,
     CheckBox,
     Divider,
     Field,
@@ -13,6 +19,7 @@ import { PaddingField } from './shared';
 
 export const ImageProperty: React.FC<{ node: ImageNode }> = ({ node }) => {
     const { p, set, setTransient, commit } = useNodeProps(node);
+    const fileInput = useRef<HTMLInputElement>(null);
 
     return (
         <div className="flex flex-col gap-5 py-5">
@@ -28,6 +35,40 @@ export const ImageProperty: React.FC<{ node: ImageNode }> = ({ node }) => {
                     value={p.src}
                     type="url"
                 />
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={() => fileInput.current?.click()}
+                        size="sm"
+                    >
+                        <Upload size={14} /> Upload for preview
+                    </Button>
+                    <span className="text-[11px] text-gray-400">
+                        Embeds the file; replace with a hosted URL before
+                        sending.
+                    </span>
+                </div>
+                <input
+                    onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                            set({
+                                src: await readFileAsDataUrl(file),
+                                alt: p.alt || file.name,
+                            });
+                        }
+                        e.target.value = '';
+                    }}
+                    className="hidden"
+                    accept="image/*"
+                    ref={fileInput}
+                    type="file"
+                />
+                {p.src.startsWith('data:') ? (
+                    <span className="text-[11px] text-amber-600">
+                        This image is embedded and will be flagged by pre-flight
+                        checks.
+                    </span>
+                ) : null}
             </Field>
             <Field label="Alt Text" stacked>
                 <Input

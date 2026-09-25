@@ -3,6 +3,7 @@ import type { CanvasNode } from '@/types';
 import { Divider, Field, Input, SelectBox, Updown } from '@/components/ui';
 import { FONT_FAMILIES } from '@/utils';
 
+import { MergeTagsEditor } from './mergetags';
 import { ColorField } from './shared';
 
 export const CanvasProperty: React.FC<{ node: CanvasNode }> = ({ node }) => {
@@ -78,6 +79,8 @@ export const CanvasProperty: React.FC<{ node: CanvasNode }> = ({ node }) => {
                     step={10}
                 />
             </Field>
+            <Divider />
+            <MergeTagsEditor node={node} />
         </div>
     );
 };

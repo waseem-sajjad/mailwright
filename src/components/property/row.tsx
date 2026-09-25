@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 
 import { useEmail, useNodeProps } from '@/hooks';
 import type { ColumnNode, RowNode } from '@/types';
@@ -17,7 +17,8 @@ import { ColorField, PaddingField } from './shared';
 
 export const RowProperty: React.FC<{ node: RowNode }> = ({ node }) => {
     const { p, set, setTransient, commit } = useNodeProps(node);
-    const { setRowLayout, addColumn, removeNode, setActive } = useEmail();
+    const { setRowLayout, addColumn, removeNode, setActive, reorderColumn } =
+        useEmail();
     const layoutKey = p.layout.map((w) => Math.round(w)).join('-');
 
     return (
@@ -87,6 +88,30 @@ export const RowProperty: React.FC<{ node: RowNode }> = ({ node }) => {
                                 min={5}
                                 unit="%"
                             />
+                            <button
+                                className="cursor-pointer p-1 text-gray-400 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+                                onClick={() =>
+                                    reorderColumn(node.id, index, index - 1)
+                                }
+                                aria-label="Move column left"
+                                title="Move column left"
+                                disabled={index === 0}
+                                type="button"
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+                            <button
+                                className="cursor-pointer p-1 text-gray-400 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+                                onClick={() =>
+                                    reorderColumn(node.id, index, index + 1)
+                                }
+                                disabled={index >= node.children.length - 1}
+                                aria-label="Move column right"
+                                title="Move column right"
+                                type="button"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
                             <button
                                 className="cursor-pointer p-1 text-gray-400 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
                                 disabled={node.children.length <= 1}

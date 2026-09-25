@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
 import { useState } from 'react';
 
 import type { EmailNode } from '@/types';
+import { VisibilityFields } from '@/components/property/visibility';
 import { propertyPanels } from '@/components/property';
 import { blockMeta, blockTypes } from '@/components/blocks';
 import { useActiveNode, useEmail, useSettings } from '@/hooks';
@@ -223,6 +224,11 @@ const Properties: React.FC = () => {
             <Breadcrumb />
             {/* Remount the panel when the selection changes so local state resets. */}
             <Component node={active} key={active.id} />
+            {active.type !== 'Canvas' && active.type !== 'Column' ? (
+                <div className="pb-5">
+                    <VisibilityFields node={active} key={`vis-${active.id}`} />
+                </div>
+            ) : null}
         </div>
     );
 };

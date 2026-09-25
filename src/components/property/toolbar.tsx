@@ -7,6 +7,9 @@ import {
     Unlink,
 } from 'lucide-react';
 
+import { formatTag } from '@/utils';
+import { useEmail } from '@/hooks';
+
 const exec = (command: string, value?: string) => {
     document.execCommand(command, false, value);
 };
@@ -28,6 +31,31 @@ const Btn: React.FC<{
         {children}
     </button>
 );
+
+const MergeTagPicker: React.FC = () => {
+    const tags = useEmail((s) => s.root.properties.mergeTags);
+    return (
+        <select
+            className="cursor-pointer rounded-xs border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-600"
+            // Keep the contentEditable selection alive when opening the picker.
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => {
+                if (e.target.value)
+                    exec('insertText', formatTag(e.target.value));
+                e.target.value = '';
+            }}
+            aria-label="Insert merge tag"
+            defaultValue=""
+        >
+            <option value="">Insert tag…</option>
+            {tags.map((tag) => (
+                <option value={tag.tag} key={tag.tag}>
+                    {tag.label} {formatTag(tag.tag)}
+                </option>
+            ))}
+        </select>
+    );
+};
 
 /** Inline formatting commands applied to the focused editable block. */
 export const TextToolbar: React.FC = () => (
@@ -64,6 +92,9 @@ export const TextToolbar: React.FC = () => (
             <Btn onClick={() => exec('removeFormat')} title="Clear formatting">
                 <RemoveFormatting size={14} />
             </Btn>
+        </div>
+        <div className="mt-2">
+            <MergeTagPicker />
         </div>
     </div>
 );
