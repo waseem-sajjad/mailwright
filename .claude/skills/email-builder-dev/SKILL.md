@@ -75,6 +75,11 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
   and wrapped in `Container` (hover/active outline, toolbar).
 - Heading/Text use `block/editable.tsx` (contentEditable). The DOM is the source
   of truth while focused; never pass `dangerouslySetInnerHTML` to it.
+- Header actions live in `src/layout/header.tsx` (History, FileMenu,
+  ExportButton). Dropdowns use `Menu` from `components/ui/menu.tsx`
+  (popover-based; `Menu.Item` closes on select). Transient feedback goes
+  through `useSettings().notify(message)` rendered by `components/toast.tsx`;
+  prefer it over `window.alert` for success messages.
 - Settings panels: `src/components/property/*.tsx`, registered in
   `property/index.tsx`. Panels are keyed by node id so local state resets on
   selection change.
