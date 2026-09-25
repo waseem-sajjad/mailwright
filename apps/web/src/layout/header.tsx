@@ -32,9 +32,10 @@ import {
     exportJson,
     normalizeNode,
     readFileAsText,
-    saveToLibrary,
     slugify,
 } from '@/utils';
+import { errorMessage, saveCloudTemplate } from '@/utils/api';
+import { captureCanvas } from '@/utils/screenshot';
 
 const ViewButton: React.FC<{
     mode: ViewMode;
@@ -152,14 +153,24 @@ const FileMenu: React.FC = () => {
                     Templates…
                 </Menu.Item>
                 <Menu.Item
-                    onSelect={() => {
+                    onSelect={async () => {
                         // eslint-disable-next-line no-alert
                         const title = window.prompt('Save to library as', name);
                         if (title === null) return;
-                        saveToLibrary(title, root);
-                        notify(
-                            `Saved “${title || 'Untitled template'}” to library`,
-                        );
+                        try {
+                            const screenshot =
+                                (await captureCanvas()) ?? undefined;
+                            await saveCloudTemplate({
+                                name: title,
+                                root,
+                                screenshot,
+                            });
+                            notify(
+                                `Saved “${title || 'Untitled'}” to the library`,
+                            );
+                        } catch (error) {
+                            notify(errorMessage(error), 'info');
+                        }
                     }}
                     icon={<BookmarkPlus size={14} />}
                 >
@@ -294,7 +305,8 @@ const ExportButton: React.FC = () => {
 export const Header: React.FC = () => {
     const { name, setName } = useEmail();
     const savedAt = useEmail((s) => s.savedAt);
-    const { setDialog, showHidden, setShowHidden } = useSettings();
+    const { setDialog, showHidden, setShowHidden, setSidebarTab } =
+        useSettings();
 
     return (
         <header className="flex h-10 items-center justify-between border-b border-gray-300 bg-hover">
@@ -362,8 +374,8 @@ export const Header: React.FC = () => {
                 <FileMenu />
                 <Button
                     className="border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
-                    onClick={() => setDialog('ai')}
-                    title="Generate a template with AI"
+                    onClick={() => setSidebarTab('ai')}
+                    title="Open the AI assistant"
                     size="sm"
                 >
                     <Sparkles size={14} /> AI

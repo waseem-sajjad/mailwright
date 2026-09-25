@@ -1,4 +1,10 @@
-import { ChevronDown, ChevronRight, Layers, LayoutGrid } from 'lucide-react';
+import {
+    ChevronDown,
+    ChevronRight,
+    Layers,
+    LayoutGrid,
+    Sparkles,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import type { EmailNode } from '@/types';
@@ -7,6 +13,7 @@ import { propertyPanels } from '@/components/property';
 import { blockMeta, blockTypes } from '@/components/blocks';
 import { useActiveNode, useEmail, useSettings } from '@/hooks';
 import { Collapsible } from '@/components/ui';
+import { ChatPanel } from '@/components/chat';
 import { Card } from '@/components/card';
 import { cn, findPath } from '@/utils';
 
@@ -29,6 +36,7 @@ const Header: React.FC<HeaderProps> = ({ className, headerType, ...props }) => {
                     [
                         ['blocks', 'Blocks', <LayoutGrid size={14} key="b" />],
                         ['layers', 'Layers', <Layers size={14} key="l" />],
+                        ['ai', 'AI', <Sparkles size={14} key="a" />],
                     ] as const
                 ).map(([tab, label, icon]) => (
                     <button
@@ -37,6 +45,9 @@ const Header: React.FC<HeaderProps> = ({ className, headerType, ...props }) => {
                             sidebarTab === tab
                                 ? 'border-blue-500 text-gray-800'
                                 : 'border-transparent',
+                            tab === 'ai' && sidebarTab === tab
+                                ? 'border-violet-500 text-violet-700'
+                                : '',
                         )}
                         onClick={() => setSidebarTab(tab)}
                         type="button"
@@ -204,6 +215,7 @@ const LayersPanel: React.FC = () => {
 
 const Components: React.FC = () => {
     const { sidebarTab } = useSettings();
+    if (sidebarTab === 'ai') return <ChatPanel />;
     return sidebarTab === 'blocks' ? <Blocks /> : <LayersPanel />;
 };
 

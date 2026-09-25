@@ -1,20 +1,23 @@
 import { Canvas, Content, Root, Sidebar } from '@/layout';
-import { AiDialog } from '@/components/ai';
 import { Dialogs } from '@/components/dialogs';
 import { Toast } from '@/components/toast';
 import { Panel } from '@/components/panel';
-import { useShortcuts } from '@/hooks';
+import { useSettings, useShortcuts } from '@/hooks';
 
 const Editor = () => {
     useShortcuts();
+    const sidebarTab = useSettings((s) => s.sidebarTab);
 
     return (
         <Root>
-            <Sidebar className="shrink-0" width="18rem">
+            <Sidebar
+                className="shrink-0 transition-[width] duration-200"
+                width={sidebarTab === 'ai' ? '24rem' : '18rem'}
+            >
                 <Sidebar.Header>
                     <Panel.Header headerType="components" />
                 </Sidebar.Header>
-                <Sidebar.Content>
+                <Sidebar.Content fill={sidebarTab === 'ai'}>
                     <Panel.Components />
                 </Sidebar.Content>
             </Sidebar>
@@ -30,7 +33,6 @@ const Editor = () => {
                 </Sidebar.Content>
             </Sidebar>
             <Dialogs />
-            <AiDialog />
             <Toast />
         </Root>
     );

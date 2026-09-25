@@ -13,19 +13,22 @@ const Header: React.FC<React.ComponentPropsWithRef<'nav'>> = ({
     </nav>
 );
 
-const Content: React.FC<React.ComponentPropsWithRef<'section'>> = ({
-    className,
-    children,
-    ...props
-}) => (
+const Content: React.FC<
+    React.ComponentPropsWithRef<'section'> & { fill?: boolean }
+> = ({ className, children, fill = false, ...props }) => (
     <section
         className={cn(
-            'relative h-[calc(100vh-2.5rem)] overflow-y-auto',
+            'relative h-[calc(100vh-2.5rem)]',
+            fill ? 'overflow-hidden' : 'overflow-y-auto',
             className,
         )}
         {...props}
     >
-        <div className="absolute top-0 left-0 w-full">{children}</div>
+        {fill ? (
+            <div className="h-full w-full">{children}</div>
+        ) : (
+            <div className="absolute top-0 left-0 w-full">{children}</div>
+        )}
     </section>
 );
 

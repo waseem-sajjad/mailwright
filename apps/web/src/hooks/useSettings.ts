@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { ViewMode } from '@/types';
 
-export type Dialog = 'none' | 'preview' | 'export' | 'templates' | 'ai';
+export type Dialog = 'none' | 'preview' | 'export' | 'templates';
 
 export interface ToastMessage {
     message: string;
@@ -16,7 +16,9 @@ interface Settings {
     hover: string;
     dialog: Dialog;
     dragging: boolean;
-    sidebarTab: 'blocks' | 'layers';
+    sidebarTab: 'blocks' | 'layers' | 'ai';
+    /** When set, the preview dialog shows this HTML instead of the editor. */
+    previewHtml: string | null;
     toast: ToastMessage | null;
     /** Render device-hidden blocks dimmed instead of collapsing them. */
     showHidden: boolean;
@@ -25,7 +27,8 @@ interface Settings {
     setHover: (hover: string) => void;
     setDialog: (dialog: Dialog) => void;
     setDragging: (dragging: boolean) => void;
-    setSidebarTab: (tab: 'blocks' | 'layers') => void;
+    setSidebarTab: (tab: 'blocks' | 'layers' | 'ai') => void;
+    setPreviewHtml: (html: string | null) => void;
     notify: (message: string, tone?: ToastMessage['tone']) => void;
     clearToast: () => void;
     setShowHidden: (showHidden: boolean) => void;
@@ -43,6 +46,7 @@ export const useSettings = create<Settings>((set) => ({
     dialog: 'none',
     dragging: false,
     sidebarTab: 'blocks',
+    previewHtml: null,
     toast: null,
     showHidden: true,
     setHover: (hover) => set({ hover }),
@@ -50,6 +54,7 @@ export const useSettings = create<Settings>((set) => ({
     setDialog: (dialog) => set({ dialog }),
     setDragging: (dragging) => set({ dragging }),
     setSidebarTab: (sidebarTab) => set({ sidebarTab }),
+    setPreviewHtml: (previewHtml) => set({ previewHtml }),
     notify: (message, tone = 'success') =>
         set({ toast: { message, tone, key: Date.now() } }),
     clearToast: () => set({ toast: null }),

@@ -33,9 +33,12 @@ export interface HistoryItem {
     createdAt: string;
 }
 
+export type TemplateKind = 'starter' | 'user' | 'ai';
+
 export interface CloudTemplate {
     id: string;
     name: string;
+    kind: TemplateKind;
     prompt: string | null;
     screenshot: string | null;
     createdAt: string;
@@ -68,6 +71,31 @@ export const aiGenerate = async (
     options: AiOptions,
 ): Promise<Generation> =>
     (await api.post<Generation>('/api/ai/generate', { prompt, options })).data;
+
+export interface Refinement extends Generation {
+    applied: string[];
+}
+
+export const aiRefine = async (input: {
+    prompt: string;
+    dsl: string;
+    instruction: string;
+    options?: AiOptions;
+}): Promise<Refinement> =>
+    (await api.post<Refinement>('/api/ai/refine', input)).data;
+
+export interface SubjectIdeas {
+    subjects: string[];
+    preheaders: string[];
+    type: string;
+}
+
+export const aiSubjects = async (
+    prompt: string,
+    options: AiOptions = {},
+): Promise<SubjectIdeas> =>
+    (await api.post<SubjectIdeas>('/api/ai/subjects', { prompt, options }))
+        .data;
 
 export const aiExpand = async (
     dsl: string,
@@ -102,9 +130,23 @@ export const saveCloudTemplate = async (input: {
 }): Promise<CloudTemplate> =>
     (await api.post<CloudTemplate>('/api/templates', input)).data;
 
+export const updateCloudTemplate = async (
+    id: string,
+    input: { name?: string; root?: CanvasNode; screenshot?: string | null },
+): Promise<CloudTemplate> =>
+    (await api.put<CloudTemplate>(`/api/templates/${id}`, input)).data;
+
+export const duplicateCloudTemplate = async (
+    id: string,
+): Promise<CloudTemplate> =>
+    (await api.post<CloudTemplate>(`/api/templates/${id}/duplicate`)).data;
+
 export const deleteCloudTemplate = async (id: string): Promise<void> => {
     await api.delete(`/api/templates/${id}`);
 };
+
+export const templateHtmlUrl = (template: CloudTemplate): string =>
+    `${api.defaults.baseURL ?? ''}/api/templates/${template.id}/html?v=${encodeURIComponent(template.updatedAt)}`;
 
 export const screenshotUrl = (template: CloudTemplate): string | null =>
     template.screenshot

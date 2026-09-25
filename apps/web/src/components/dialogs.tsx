@@ -6,23 +6,13 @@ import {
     Download,
     Monitor,
     Smartphone,
-    Trash2,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useEmail, useSettings } from '@/hooks';
 import { Button, CheckBox, Modal } from '@/components/ui';
-import type { Issue, SavedTemplate } from '@/utils';
-import type { CloudTemplate } from '@/utils/api';
-import {
-    deleteCloudTemplate,
-    errorMessage,
-    getCloudTemplate,
-    listCloudTemplates,
-    saveCloudTemplate,
-    screenshotUrl,
-} from '@/utils/api';
-import { captureCanvas } from '@/utils/screenshot';
+import { LibraryDialog } from '@/components/library';
+import type { Issue } from '@/utils';
 import {
     applyMergeTags,
     checkDocument,
@@ -31,11 +21,7 @@ import {
     downloadFile,
     exportHtml,
     exportJson,
-    loadLibrary,
-    removeFromLibrary,
-    saveToLibrary,
     slugify,
-    templates,
 } from '@/utils';
 
 const useHtml = (minify = false) => {
@@ -72,9 +58,11 @@ const Segmented = <T extends string>({
 );
 
 const PreviewDialog: React.FC = () => {
-    const { dialog, setDialog, view } = useSettings();
+    const { dialog, setDialog, view, previewHtml, setPreviewHtml } =
+        useSettings();
     const mergeTags = useEmail((s) => s.root.properties.mergeTags);
-    const html = useHtml();
+    const editorHtml = useHtml();
+    const html = previewHtml ?? editorHtml;
     const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
     const [sample, setSample] = useState(true);
 
@@ -112,10 +100,13 @@ const PreviewDialog: React.FC = () => {
                     />
                 </div>
             }
-            onClose={() => setDialog('none')}
+            onClose={() => {
+                setDialog('none');
+                setPreviewHtml(null);
+            }}
             open={dialog === 'preview'}
             className="h-[92vh]"
-            title="Preview"
+            title={previewHtml ? 'Preview (AI draft)' : 'Preview'}
         >
             <div className="flex h-full items-start justify-center bg-gray-200 p-4">
                 <iframe
@@ -278,248 +269,10 @@ const ExportDialog: React.FC = () => {
     );
 };
 
-const TemplateCard: React.FC<{
-    name: string;
-    description: string;
-    onSelect: () => void;
-    onDelete?: () => void;
-    thumbnail?: string | null;
-}> = ({ name, description, onSelect, onDelete, thumbnail }) => (
-    <div className="relative">
-        <button
-            className="flex w-full cursor-pointer flex-col gap-1 rounded border border-gray-300 p-3 text-left transition-colors hover:border-blue-400 hover:bg-blue-50"
-            onClick={onSelect}
-            type="button"
-        >
-            {thumbnail !== undefined ? (
-                <div className="mb-1 flex h-28 w-full items-center justify-center overflow-hidden rounded-xs border border-gray-200 bg-gray-100">
-                    {thumbnail ? (
-                        <img
-                            className="h-full w-full object-cover object-top"
-                            src={thumbnail}
-                            alt=""
-                        />
-                    ) : (
-                        <span className="text-[11px] text-gray-400">
-                            No preview
-                        </span>
-                    )}
-                </div>
-            ) : null}
-            <span className="pr-6 text-sm font-semibold text-gray-800">
-                {name}
-            </span>
-            <span className="text-xs text-gray-500">{description}</span>
-        </button>
-        {onDelete ? (
-            <button
-                className="absolute top-2 right-2 cursor-pointer rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                aria-label={`Delete ${name}`}
-                onClick={onDelete}
-                title="Delete"
-                type="button"
-            >
-                <Trash2 size={14} />
-            </button>
-        ) : null}
-    </div>
-);
-
-const TemplatesDialog: React.FC = () => {
-    const { dialog, setDialog } = useSettings();
-    const { load, root, name } = useEmail();
-    const [tab, setTab] = useState<'starter' | 'saved' | 'cloud'>('starter');
-    const [library, setLibrary] = useState<SavedTemplate[]>([]);
-    const [cloud, setCloud] = useState<CloudTemplate[]>([]);
-    const [cloudError, setCloudError] = useState<string | null>(null);
-    const [saving, setSaving] = useState(false);
-    const notify = useSettings((s) => s.notify);
-
-    const refreshCloud = () =>
-        listCloudTemplates()
-            .then((items) => {
-                setCloud(items);
-                setCloudError(null);
-            })
-            .catch((e) => setCloudError(errorMessage(e)));
-
-    useEffect(() => {
-        if (dialog === 'templates') {
-            setLibrary(loadLibrary());
-            refreshCloud();
-        }
-    }, [dialog]);
-
-    const saveToCloud = async () => {
-        // eslint-disable-next-line no-alert
-        const title = window.prompt('Save to server library as', name);
-        if (title === null) return;
-        setSaving(true);
-        try {
-            const screenshot = (await captureCanvas()) ?? undefined;
-            await saveCloudTemplate({ name: title, root, screenshot });
-            await refreshCloud();
-            setTab('cloud');
-            notify(`Saved “${title || 'Untitled'}” to the server library`);
-        } catch (e) {
-            setCloudError(errorMessage(e));
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const confirmReplace = () => {
-        if (root.children.length === 0) return true;
-        // eslint-disable-next-line no-alert
-        return window.confirm('Replace the current email with this template?');
-    };
-
-    const open = (next: typeof root, title: string) => {
-        if (!confirmReplace()) return;
-        load(next, title);
-        setDialog('none');
-    };
-
-    return (
-        <Modal
-            actions={
-                <div className="mr-2 flex items-center gap-2">
-                    <Button
-                        onClick={() => {
-                            // eslint-disable-next-line no-alert
-                            const title = window.prompt(
-                                'Save current email as',
-                                name,
-                            );
-                            if (title === null) return;
-                            setLibrary(saveToLibrary(title, root));
-                            setTab('saved');
-                        }}
-                        title="Save in this browser only"
-                        size="sm"
-                    >
-                        Save locally
-                    </Button>
-                    <Button
-                        title="Save to the server library with a screenshot"
-                        onClick={saveToCloud}
-                        disabled={saving}
-                        size="sm"
-                    >
-                        {saving ? 'Saving…' : 'Save to server'}
-                    </Button>
-                    <Segmented
-                        options={[
-                            { value: 'starter', label: 'Starter' },
-                            {
-                                value: 'saved',
-                                label: `Local (${library.length})`,
-                                title: 'Local',
-                            },
-                            {
-                                value: 'cloud',
-                                label: `Server (${cloud.length})`,
-                                title: 'Server',
-                            },
-                        ]}
-                        onChange={setTab}
-                        value={tab}
-                    />
-                </div>
-            }
-            onClose={() => setDialog('none')}
-            open={dialog === 'templates'}
-            className="max-w-3xl"
-            title="Templates"
-        >
-            <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-3">
-                {tab === 'starter'
-                    ? templates.map((template) => (
-                          <TemplateCard
-                              onSelect={() => {
-                                  const built = template.build();
-                                  open(built, built.properties.title);
-                              }}
-                              description={template.description}
-                              name={template.name}
-                              key={template.id}
-                          />
-                      ))
-                    : library.map((saved) => (
-                          <TemplateCard
-                              onDelete={() => {
-                                  // eslint-disable-next-line no-alert
-                                  const ok = window.confirm(
-                                      `Delete "${saved.name}"?`,
-                                  );
-                                  if (ok)
-                                      setLibrary(removeFromLibrary(saved.id));
-                              }}
-                              description={`Saved ${new Date(saved.updatedAt).toLocaleString()}`}
-                              onSelect={() => open(saved.root, saved.name)}
-                              name={saved.name}
-                              key={saved.id}
-                          />
-                      ))}
-                {tab === 'saved' && library.length === 0 ? (
-                    <p className="col-span-full py-8 text-center text-xs text-gray-400">
-                        Nothing saved locally yet. Use “Save locally” or the
-                        File menu.
-                    </p>
-                ) : null}
-                {tab === 'cloud'
-                    ? cloud.map((item) => (
-                          <TemplateCard
-                              onDelete={async () => {
-                                  // eslint-disable-next-line no-alert
-                                  const ok = window.confirm(
-                                      `Delete "${item.name}" from the server?`,
-                                  );
-                                  if (!ok) return;
-                                  try {
-                                      await deleteCloudTemplate(item.id);
-                                      await refreshCloud();
-                                  } catch (e) {
-                                      setCloudError(errorMessage(e));
-                                  }
-                              }}
-                              onSelect={async () => {
-                                  try {
-                                      const full = await getCloudTemplate(
-                                          item.id,
-                                      );
-                                      open(full.root, full.name);
-                                  } catch (e) {
-                                      setCloudError(errorMessage(e));
-                                  }
-                              }}
-                              description={`${item.prompt ? 'AI · ' : ''}Saved ${new Date(item.updatedAt).toLocaleString()}`}
-                              thumbnail={screenshotUrl(item)}
-                              name={item.name}
-                              key={item.id}
-                          />
-                      ))
-                    : null}
-                {tab === 'cloud' && cloud.length === 0 && !cloudError ? (
-                    <p className="col-span-full py-8 text-center text-xs text-gray-400">
-                        The server library is empty. Use “Save to server” to add
-                        the current email with a screenshot.
-                    </p>
-                ) : null}
-                {tab === 'cloud' && cloudError ? (
-                    <p className="col-span-full rounded-xs border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                        {cloudError}
-                    </p>
-                ) : null}
-            </div>
-        </Modal>
-    );
-};
-
 export const Dialogs: React.FC = () => (
     <>
         <PreviewDialog />
         <ExportDialog />
-        <TemplatesDialog />
+        <LibraryDialog />
     </>
 );

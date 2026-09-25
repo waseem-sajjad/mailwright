@@ -84,3 +84,9 @@ export const slugify = (value: string): string =>
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '') || 'email-template';
+
+/** Native confirm kept in one place so callers stay lint-clean. */
+
+export const confirmAction = (message: string): boolean =>
+    // eslint-disable-next-line no-alert
+    window.confirm(message);
