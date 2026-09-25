@@ -1,4 +1,5 @@
 import {
+    BookmarkPlus,
     Code2,
     Eye,
     FileDown,
@@ -13,10 +14,18 @@ import {
 } from 'lucide-react';
 import { useRef } from 'react';
 
-import type { EmailDocument, ViewMode } from '@/types';
+import type { CanvasNode, EmailDocument, ViewMode } from '@/types';
 import { useEmail, useSettings } from '@/hooks';
 import { Button } from '@/components/ui';
-import { cn, downloadFile, exportJson, readFileAsText, slugify } from '@/utils';
+import {
+    cn,
+    downloadFile,
+    exportJson,
+    normalizeNode,
+    readFileAsText,
+    saveToLibrary,
+    slugify,
+} from '@/utils';
 
 const ViewButton: React.FC<{
     mode: ViewMode;
@@ -70,7 +79,7 @@ export const Header: React.FC = () => {
             const text = await readFileAsText(file);
             const doc = JSON.parse(text) as EmailDocument;
             if (doc?.root?.type !== 'Canvas') throw new Error('Invalid file');
-            load(doc.root, doc.name);
+            load(normalizeNode(doc.root) as CanvasNode, doc.name);
         } catch {
             // eslint-disable-next-line no-alert
             window.alert('That file is not a valid email template export.');
@@ -137,6 +146,16 @@ export const Header: React.FC = () => {
                     label="Templates"
                 >
                     <LayoutTemplate size={18} />
+                </IconButton>
+                <IconButton
+                    onClick={() => {
+                        // eslint-disable-next-line no-alert
+                        const title = window.prompt('Save to library as', name);
+                        if (title !== null) saveToLibrary(title, root);
+                    }}
+                    label="Save to template library"
+                >
+                    <BookmarkPlus size={18} />
                 </IconButton>
                 <IconButton
                     onClick={() => fileInput.current?.click()}
