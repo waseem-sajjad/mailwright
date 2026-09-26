@@ -1,6 +1,7 @@
 import { Canvas, Content, Root, Sidebar } from '@/layout';
 import { Dialogs } from '@/components/dialogs';
 import { Toast } from '@/components/toast';
+import { AdSlot } from '@/components/ads';
 import { Panel } from '@/components/panel';
 import { useSettings, useShortcuts } from '@/hooks';
 
@@ -20,6 +21,10 @@ const Editor = () => {
                 <Sidebar.Content fill={sidebarTab === 'ai'}>
                     <Panel.Components />
                 </Sidebar.Content>
+                <AdSlot
+                    className="border-t border-gray-200 bg-white p-2"
+                    slot={import.meta.env.VITE_ADSENSE_SLOT_SIDEBAR}
+                />
             </Sidebar>
             <Content>
                 <Canvas />

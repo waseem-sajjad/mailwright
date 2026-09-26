@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { AdSlot } from '@/components/ads';
 import { useEmail, useSettings } from '@/hooks';
 import { Button, Modal } from '@/components/ui';
 import type { CloudTemplate, TemplateKind } from '@/utils/api';
@@ -340,6 +341,11 @@ export const LibraryDialog: React.FC = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
+                    <AdSlot
+                        className="mb-4"
+                        format="horizontal"
+                        slot={import.meta.env.VITE_ADSENSE_SLOT_LIBRARY}
+                    />
                     {error ? (
                         <p className="mb-4 rounded-xs border border-red-200 bg-red-50 p-3 text-xs text-red-700">
                             {error}

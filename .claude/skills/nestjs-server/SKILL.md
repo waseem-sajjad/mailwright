@@ -66,11 +66,21 @@ line (it kills the shell): kill by port with `fuser -k 8787/tcp`.
   answer); `ANSWER_INSTRUCTION` gives consultant replies; `TITLE_INSTRUCTION`
   names conversations. Edit copy rules there, not in code.
 
+## Public-site rules
+
+- Never add a route that lists other people's data (conversations, generation
+  history). Conversations are reachable only by id.
+- Never return vendor or model names to the client; `AiService.status()` is
+  `{ ok, ai }`, generation payloads have no `model` field.
+- New model-calling routes get `@Throttle({ ai: { limit, ttl } })`; the global
+  `ThrottlerGuard` already applies the default bucket. Set `TRUST_PROXY=true`
+  behind nginx/Cloudflare so limits key on the real IP.
+
 ## Chat module
 
 `chat/chat.service.ts` owns the conversation flow; the web store is a thin
 client. A turn = `send(conversationId, text, options)`: append the user
-message (AI title on the first one) → `AiService.classify()` (Gemini, with
+message (AI title on the first one, kept for future use) → `AiService.classify()` (Gemini, with
 `chat/intent.ts` heuristics as fallback) → search / subjects / refine /
 generate / answer through `AiService` (which links the generation to the
 conversation) → append the assistant message with `generationId` and a small

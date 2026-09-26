@@ -5,28 +5,18 @@ import {
     Code2,
     Copy,
     ExternalLink,
-    History,
     Loader2,
-    MessageSquare,
-    Pencil,
     Plus,
     RotateCcw,
     Send,
     Sparkles,
     ThumbsDown,
     ThumbsUp,
-    Trash2,
     Wand2,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import {
-    type ChatMessage,
-    type ConversationSummary,
-    useChat,
-    useEmail,
-    useSettings,
-} from '@/hooks';
+import { type ChatMessage, useChat, useEmail, useSettings } from '@/hooks';
 import { Button, SelectBox } from '@/components/ui';
 import {
     aiFeedback,
@@ -282,11 +272,6 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                             <div className="truncate text-xs font-semibold text-gray-800">
                                 {g.name}
                             </div>
-                            <div className="text-[10px] text-gray-400">
-                                {g.engine === 'gemini'
-                                    ? `Gemini${g.model ? ` · ${g.model.replace(/^models\//, '')}` : ''}`
-                                    : 'rules engine'}
-                            </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                             <button
@@ -429,93 +414,22 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
     );
 };
 
-const timeAgo = (iso: string): string => {
-    const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes} min ago`;
-    const hours = Math.round(minutes / 60);
-    if (hours < 24) return `${hours} h ago`;
-    return new Date(iso).toLocaleDateString();
-};
-
-/** One row of the conversation list. */
-const ConversationRow: React.FC<{
-    conversation: ConversationSummary;
-    active: boolean;
-    onOpen: () => void;
-    onRename: () => void;
-    onDelete: () => void;
-}> = ({ conversation, active, onOpen, onRename, onDelete }) => (
-    <li
-        className={cn(
-            'group flex items-start gap-2 rounded-md border px-2 py-1.5',
-            active
-                ? 'border-violet-300 bg-violet-50'
-                : 'border-transparent hover:bg-gray-100',
-        )}
-    >
-        <button
-            className="flex min-w-0 flex-1 cursor-pointer flex-col text-left"
-            onClick={onOpen}
-            type="button"
-        >
-            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-800">
-                <MessageSquare className="shrink-0 text-gray-400" size={12} />
-                <span className="truncate">{conversation.title}</span>
-            </span>
-            <span className="truncate text-[10px] text-gray-400">
-                {timeAgo(conversation.updatedAt)} · {conversation.messageCount}{' '}
-                messages
-                {conversation.preview ? ` · ${conversation.preview}` : ''}
-            </span>
-        </button>
-        <span className="flex shrink-0 items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-            <button
-                className="cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-800"
-                aria-label="Rename conversation"
-                onClick={onRename}
-                title="Rename"
-                type="button"
-            >
-                <Pencil size={12} />
-            </button>
-            <button
-                className="cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-600"
-                aria-label="Delete conversation"
-                onClick={onDelete}
-                title="Delete"
-                type="button"
-            >
-                <Trash2 size={12} />
-            </button>
-        </span>
-    </li>
-);
-
-/** Chat-style AI assistant living in the left sidebar, with server-side conversation history. */
+/** AI assistant in the left sidebar: one private conversation per browser. */
 export const ChatPanel: React.FC = () => {
     const {
-        conversations,
-        activeId,
         messages,
         context,
         loading,
         pending,
         error,
-        showHistory,
         options,
-        loadConversations,
-        open,
+        restore,
         newChat,
         send,
-        rename,
-        remove,
         resetContext,
         setOptions,
-        setShowHistory,
     } = useChat();
     const [draft, setDraft] = useState('');
-    const [search, setSearch] = useState('');
     const [health, setHealth] = useState<Health | null>(null);
     const [showContextDsl, setShowContextDsl] = useState(false);
     const bottom = useRef<HTMLDivElement>(null);
@@ -524,48 +438,18 @@ export const ChatPanel: React.FC = () => {
         aiHealth()
             .then(setHealth)
             .catch(() => setHealth(null));
-        loadConversations();
-        const remembered = useChat.getState().activeId;
-        if (remembered) open(remembered);
-    }, [loadConversations, open]);
+        restore();
+    }, [restore]);
 
     useEffect(() => {
         bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, [messages.length, pending]);
-
-    const active = useMemo(
-        () => conversations.find((c) => c.id === activeId) ?? null,
-        [conversations, activeId],
-    );
-
-    const filtered = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return conversations.filter(
-            (c) =>
-                !q ||
-                c.title.toLowerCase().includes(q) ||
-                (c.preview ?? '').toLowerCase().includes(q),
-        );
-    }, [conversations, search]);
 
     const submit = () => {
         const text = draft.trim();
         if (!text || pending) return;
         setDraft('');
         send(text);
-    };
-
-    const renameActive = (conversation: ConversationSummary) => {
-        // eslint-disable-next-line no-alert
-        const title = window.prompt('Rename conversation', conversation.title);
-        if (title && title.trim()) rename(conversation.id, title.trim());
-    };
-
-    const deleteConversationWithConfirm = (
-        conversation: ConversationSummary,
-    ) => {
-        if (confirmAction(`Delete “${conversation.title}”?`))
-            remove(conversation.id);
     };
 
     const chips = context ? FOLLOW_UPS : STARTERS;
@@ -578,62 +462,30 @@ export const ChatPanel: React.FC = () => {
                         <Bot size={14} />
                     </span>
                     <div className="min-w-0">
-                        <div
-                            className="truncate font-semibold text-gray-800"
-                            title={active?.title ?? 'AI assistant'}
-                        >
-                            {showHistory
-                                ? 'Chat history'
-                                : (active?.title ?? 'AI assistant')}
+                        <div className="truncate font-semibold text-gray-800">
+                            AI email designer
                         </div>
                         <div className="truncate text-[10px] text-gray-400">
-                            {health === null ? 'server offline' : null}
-                            {health?.engine === 'gemini'
-                                ? `Gemini · ${health.model?.replace(/^models\//, '')}`
+                            {health === null ? 'Assistant offline' : null}
+                            {health?.ai
+                                ? 'Describe an email, then refine it in plain words'
                                 : null}
-                            {health?.engine === 'rules'
-                                ? 'rules engine · set GEMINI_API_KEY for Gemini'
+                            {health && !health.ai
+                                ? 'Basic mode: templates from built-in layouts'
                                 : null}
                         </div>
                     </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                    <button
-                        className={cn(
-                            'cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-800',
-                            { 'bg-violet-50 text-violet-700': showHistory },
-                        )}
-                        onClick={() => setShowHistory(!showHistory)}
-                        aria-pressed={showHistory}
-                        aria-label="Chat history"
-                        title="Chat history"
-                        type="button"
-                    >
-                        <History size={14} />
-                    </button>
-                    <button
-                        className="cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-800"
-                        onClick={() => newChat()}
-                        aria-label="New chat"
-                        title="New chat"
-                        type="button"
-                    >
-                        <Plus size={14} />
-                    </button>
-                    {active ? (
-                        <button
-                            className="cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500"
-                            onClick={() =>
-                                deleteConversationWithConfirm(active)
-                            }
-                            aria-label="Delete this conversation"
-                            title="Delete this conversation"
-                            type="button"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    ) : null}
-                </div>
+                <button
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-30"
+                    disabled={messages.length === 0 || pending}
+                    onClick={() => newChat()}
+                    aria-label="New chat"
+                    title="Start a new chat (clears this one)"
+                    type="button"
+                >
+                    <Plus size={13} /> New chat
+                </button>
             </div>
 
             {error ? (
@@ -642,80 +494,37 @@ export const ChatPanel: React.FC = () => {
                 </div>
             ) : null}
 
-            {showHistory ? (
-                <div className="flex flex-1 flex-col overflow-hidden">
-                    <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-3 py-2">
-                        <input
-                            className="min-w-0 flex-1 rounded-xs border border-gray-300 px-2 py-1 text-xs outline-none focus:border-violet-400"
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search conversations"
-                            aria-label="Search conversations"
-                            value={search}
-                        />
-                        <Button
-                            onClick={() => newChat()}
-                            variant="primary"
-                            size="sm"
-                        >
-                            <Plus size={12} /> New chat
-                        </Button>
+            <div className="flex-1 space-y-3 overflow-y-auto p-3">
+                {loading ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Loader2 className="animate-spin" size={14} /> Loading…
                     </div>
-                    <ul className="flex-1 space-y-1 overflow-y-auto p-2">
-                        {filtered.length === 0 ? (
-                            <li className="py-10 text-center text-xs text-gray-400">
-                                {conversations.length === 0
-                                    ? 'No conversations yet. Start one below.'
-                                    : 'No conversation matches.'}
-                            </li>
-                        ) : null}
-                        {filtered.map((c) => (
-                            <ConversationRow
-                                onDelete={() =>
-                                    deleteConversationWithConfirm(c)
-                                }
-                                onRename={() => renameActive(c)}
-                                active={c.id === activeId}
-                                onOpen={() => open(c.id)}
-                                conversation={c}
-                                key={c.id}
-                            />
-                        ))}
-                    </ul>
-                </div>
-            ) : (
-                <div className="flex-1 space-y-3 overflow-y-auto p-3">
-                    {loading ? (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <Loader2 className="animate-spin" size={14} />{' '}
-                            Loading conversation…
-                        </div>
-                    ) : null}
-                    {!loading && messages.length === 0 ? (
-                        <div className="flex flex-col items-center gap-2 py-8 text-center">
-                            <Sparkles className="text-violet-400" size={28} />
-                            <p className="text-xs text-gray-500">
-                                Describe the email you need. Then refine it in
-                                plain words: “make the header dark”, “add a
-                                coupon”, “professional tone”. Every chat is
-                                saved; open earlier ones from the history.
-                            </p>
-                        </div>
-                    ) : null}
-                    {messages.map((m) => (
-                        <Message message={m} key={m.id} />
-                    ))}
-                    {pending ? (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <Loader2 className="animate-spin" size={14} />{' '}
-                            Thinking…
-                        </div>
-                    ) : null}
-                    <div ref={bottom} />
-                </div>
-            )}
+                ) : null}
+                {!loading && messages.length === 0 ? (
+                    <div className="flex flex-col items-center gap-2 py-8 text-center">
+                        <Sparkles className="text-violet-400" size={28} />
+                        <p className="text-xs text-gray-500">
+                            Describe the email you need. Then refine it in plain
+                            words: “make the header dark”, “add a coupon”,
+                            “professional tone”. Your chat stays in this browser
+                            only.
+                        </p>
+                    </div>
+                ) : null}
+                {messages.map((m) => (
+                    <Message message={m} key={m.id} />
+                ))}
+                {pending ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Loader2 className="animate-spin" size={14} />{' '}
+                        Designing…
+                    </div>
+                ) : null}
+                <div ref={bottom} />
+            </div>
 
             <div className="border-t border-gray-200 bg-white p-2">
-                {context && !showHistory ? (
+                {context ? (
                     <div className="mb-2 rounded border border-violet-200 bg-violet-50 px-2 py-1.5 text-[11px] text-violet-900">
                         <div className="flex items-center gap-1.5">
                             <Sparkles className="shrink-0" size={12} />

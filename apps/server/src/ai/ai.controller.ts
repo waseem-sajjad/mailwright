@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
+import { Body, Controller, Inject, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 
 import { ZodValidationPipe } from '../common/zod.pipe';
 import { AiService } from './ai.service';
@@ -11,11 +12,12 @@ import {
     expandBody,
     feedbackBody,
     generateBody,
-    idParam,
     refineBody,
     subjectsBody,
 } from './schemas';
 
+/** Model calls are rate limited per IP (see AppModule) because the site is public. */
+@Throttle({ ai: { limit: 20, ttl: 600_000 } })
 @Controller('api/ai')
 export class AiController {
     constructor(@Inject(AiService) private readonly ai: AiService) {}
@@ -50,15 +52,5 @@ export class AiController {
     @Post('feedback')
     async feedback(@Body(new ZodValidationPipe(feedbackBody)) body: FeedbackBody) {
         return { ok: await this.ai.rate(body.id, body.rating) };
-    }
-
-    @Get('history')
-    history() {
-        return this.ai.history(50);
-    }
-
-    @Get('history/:id')
-    historyItem(@Param('id', new ZodValidationPipe(idParam)) id: string) {
-        return this.ai.historyItem(id);
     }
 }

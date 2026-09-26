@@ -165,17 +165,22 @@ What the web side must know:
 - Shared code is the `@email-builder/shared` package; keep DOM/Vite modules
   (api.ts, screenshot.ts, storage, selection) in `apps/web/src/utils` only.
 - Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
-  (`components/chat.tsx`, state in `hooks/useChat.ts`). Conversations and
-  messages live on the server (`/api/chat`, ChatGPT-style history); the
-  store keeps only `activeId` and the options in localStorage. `send()`
-  creates a conversation on demand, shows the user message optimistically,
-  then swaps in the server's user + assistant messages and context. The
-  panel header toggles a history view (search, open, rename, delete, New
-  chat); the server decides intent (search / subjects / refine / generate /
-  answer) with Gemini.
-  Each generation card has a DSL toggle (`DslView`), a "Save to library"
-  button (sends the DSL) and shows its references; the context bar shows
-  the brief, applied changes, current DSL and a reset (server-side).
+  (`components/chat.tsx`, state in `hooks/useChat.ts`). The site is public:
+  one private conversation per browser (its id and the options live in
+  localStorage; the server stores the turns for refinement context but never
+  lists conversations). "New chat" deletes the current one. The UI never
+  shows an AI vendor or model name (`/api/health` only says `ai: true|false`).
+  `send()` creates a conversation on demand, shows the user message
+  optimistically, then swaps in the server's user + assistant messages and
+  context; the server decides intent (search / subjects / refine / generate /
+  answer). Each generation card has a DSL toggle (`DslView`), a "Save to
+  library" button (sends the DSL) and shows its references; the context bar
+  shows the brief, applied changes, current DSL and a reset (server-side).
+- Ads: `components/ads.tsx` (`AdSlot`) renders Google AdSense units only
+  when `VITE_ADSENSE_CLIENT` and the slot id are set (see `.env.example`);
+  placements: bottom of the left sidebar (`editor.tsx`) and above the library
+  grid. `public/ads.txt` must carry the publisher line. Ad containers are
+  `data-editor-only` so screenshots skip them.
 - Template library (`components/library.tsx`) is server-only: debounced
   server keyword search (`listCloudTemplates({ q })`), screenshots via `captureCanvas()`
   (`html-to-image`; `data-editor-only` elements are skipped) with a live

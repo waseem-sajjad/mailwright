@@ -18,7 +18,10 @@ generation history.
 
 ## Layout (`src/`)
 
-- `main.ts` – bootstrap: body limit 12 MB (screenshots), CORS, `ApiExceptionFilter`.
+- `main.ts` – bootstrap: body limit 12 MB (screenshots), CORS, `trust proxy` when
+  `TRUST_PROXY=true`, `ApiExceptionFilter`.
+- Rate limits (`@nestjs/throttler`, global guard): 120 requests/min per IP, and the `ai`
+  bucket of 20 model calls per 10 min on `/api/ai/*` and `/api/chat/:id/messages`.
 - `app.module.ts` – `ConfigModule` (global, `config/app.config.ts` via `registerAs`,
   env validated by zod in `config/env.validation.ts`), `ServeStaticModule` for the web
   build (excludes `/api/{*path}`), `PrismaModule`, `ProvidersModule`, `TemplatesModule`,
@@ -38,7 +41,8 @@ generation history.
   `classify()` (Gemini routes chat messages; heuristics from `chat/intent.ts` when it is
   off), `answer()` (consultant reply, no template), `title()`, `expand()`, history and
   ratings. Falls back to the rules engine whenever Gemini is missing, fails, or answers
-  without a parseable row.
+  without a parseable row. Responses never carry vendor or model names (`engine` is an
+  internal enum; `/api/health` only says `ai: true|false`).
 - `ai/engine/` – pure code: `dsl.ts` (parse/expand/stringify), `generator.ts` (rules
   engine, `size: 'large'` adds extra sections, `withHistory()`), `refine.ts`, `subjects.ts`.
 - `chat/` – conversations stored in Postgres (`conversations`, `messages`; generations
@@ -46,8 +50,9 @@ generation history.
   message, AI-title the chat on its first message, classify, act (search / subjects /
   refine / generate / answer) with the conversation's own context (brief + current DSL +
   applied steps in `conversation.context`), store the reply (`generationId` + payload).
-  Routes: `GET/POST /api/chat`, `GET/PATCH/DELETE /api/chat/:id`,
-  `POST /api/chat/:id/messages`, `POST /api/chat/:id/reset`.
+  Routes: `POST /api/chat`, `GET/DELETE /api/chat/:id`, `POST /api/chat/:id/messages`,
+  `POST /api/chat/:id/reset`. There is deliberately no listing route: the site is
+  public and a conversation is private to the browser that holds its id.
 - `ai/schemas.ts`, `templates/schemas.ts`, `chat/schemas.ts` – zod bodies; bound per route
   with `ZodValidationPipe` (`common/zod.pipe.ts`). Errors leave as `{ error, issues? }`.
 - `templates/templates.service.ts` – CRUD, screenshots as `Bytes`, `list({ q })` (stemmed
@@ -64,4 +69,4 @@ generation history.
 - Gemini output is only trusted when `parseDsl` yields at least one row; keep the rules
   engine working so the product answers without a key.
 - Env: `PORT`, `DATABASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `AI_TIMEOUT_MS`,
-  `CORS_ORIGIN`, `WEB_DIST`.
+  `TRUST_PROXY`, `CORS_ORIGIN`, `WEB_DIST`.

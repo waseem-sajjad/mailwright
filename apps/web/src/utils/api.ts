@@ -27,19 +27,10 @@ export interface Generation {
     id: string;
     name: string;
     engine: 'gemini' | 'rules';
-    model: string | null;
     dsl: string;
     root: CanvasNode;
     html: string;
     references: Reference[];
-}
-
-export interface HistoryItem {
-    id: string;
-    prompt: string;
-    engine: string;
-    rating: number;
-    createdAt: string;
 }
 
 export type TemplateKind = 'starter' | 'user' | 'ai';
@@ -58,8 +49,8 @@ export interface CloudTemplate {
 
 export interface Health {
     ok: boolean;
-    engine: 'gemini' | 'rules';
-    model: string | null;
+    /** Whether the AI designer is available (vendor and model are never exposed). */
+    ai: boolean;
 }
 
 export const errorMessage = (error: unknown): string => {
@@ -132,14 +123,6 @@ export const aiExpand = async (
 export const aiFeedback = async (id: string, rating: 1 | -1): Promise<void> => {
     await api.post('/api/ai/feedback', { id, rating });
 };
-
-export const aiHistory = async (): Promise<HistoryItem[]> =>
-    (await api.get<HistoryItem[]>('/api/ai/history')).data;
-
-export const aiHistoryItem = async (
-    id: string,
-): Promise<Generation & { prompt: string }> =>
-    (await api.get(`/api/ai/history/${id}`)).data;
 
 /** `q` searches name, prompt and DSL by keyword. */
 export const listCloudTemplates = async (
@@ -222,11 +205,6 @@ export interface ConversationDetail extends ConversationSummary {
     messages: ChatMessage[];
 }
 
-export const listConversations = async (
-    q?: string,
-): Promise<ConversationSummary[]> =>
-    (await api.get<ConversationSummary[]>('/api/chat', { params: { q } })).data;
-
 export const createConversation = async (
     title?: string,
 ): Promise<ConversationDetail> =>
@@ -236,12 +214,6 @@ export const getConversation = async (
     id: string,
 ): Promise<ConversationDetail> =>
     (await api.get<ConversationDetail>(`/api/chat/${id}`)).data;
-
-export const renameConversation = async (
-    id: string,
-    title: string,
-): Promise<ConversationSummary> =>
-    (await api.patch<ConversationSummary>(`/api/chat/${id}`, { title })).data;
 
 export const deleteConversation = async (id: string): Promise<void> => {
     await api.delete(`/api/chat/${id}`);

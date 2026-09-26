@@ -1,31 +1,23 @@
 import { create } from 'zustand';
 
-import type {
-    AiOptions,
-    ChatContext,
-    ChatMessage,
-    ConversationSummary,
-} from '@/utils/api';
+import type { AiOptions, ChatContext, ChatMessage } from '@/utils/api';
 import {
     createConversation,
     deleteConversation,
     errorMessage,
     getConversation,
-    listConversations,
-    renameConversation,
     resetConversation,
     sendChatMessage,
 } from '@/utils/api';
 
-export type { ChatContext, ChatMessage, ConversationSummary };
+export type { ChatContext, ChatMessage };
 
 /**
- * Chat state. Conversations and messages live on the server (ChatGPT-style
- * history); only the open conversation id and the generation options are
- * remembered locally.
+ * Chat state for a public site: one private conversation per browser. The
+ * server stores the turns (so refinements keep their context) but never
+ * lists conversations; only this browser knows the id.
  */
 interface ChatState {
-    conversations: ConversationSummary[];
     activeId: string | null;
     messages: ChatMessage[];
     /** The brief, DSL and applied instructions the next edit starts from. */
@@ -33,19 +25,16 @@ interface ChatState {
     loading: boolean;
     pending: boolean;
     error: string | null;
-    showHistory: boolean;
     options: AiOptions;
 
-    loadConversations: (q?: string) => Promise<void>;
-    open: (id: string) => Promise<void>;
+    /** Reloads the remembered conversation after a page load. */
+    restore: () => Promise<void>;
+    /** Deletes the current conversation on the server and starts an empty one. */
     newChat: () => Promise<void>;
     send: (text: string) => Promise<void>;
-    rename: (id: string, title: string) => Promise<void>;
-    remove: (id: string) => Promise<void>;
     rate: (messageId: string, rating: 1 | -1) => void;
     resetContext: () => Promise<void>;
     setOptions: (options: Partial<AiOptions>) => void;
-    setShowHistory: (show: boolean) => void;
 }
 
 const STORAGE_KEY = 'email-template-builder:chat:v2';
@@ -72,45 +61,18 @@ const load = (): { activeId: string | null; options: AiOptions } => {
     }
 };
 
-const summaryOf = (
-    detail: ConversationSummary & { messages?: unknown[] },
-): ConversationSummary => ({
-    id: detail.id,
-    title: detail.title,
-    createdAt: detail.createdAt,
-    updatedAt: detail.updatedAt,
-    messageCount: detail.messageCount,
-    preview: detail.preview,
-});
-
-const upsert = (
-    list: ConversationSummary[],
-    item: ConversationSummary,
-): ConversationSummary[] =>
-    [item, ...list.filter((c) => c.id !== item.id)].sort((a, b) =>
-        b.updatedAt.localeCompare(a.updatedAt),
-    );
-
 export const useChat = create<ChatState>((set, get) => ({
     ...load(),
-    conversations: [],
     messages: [],
     context: null,
     loading: false,
     pending: false,
     error: null,
-    showHistory: false,
 
-    loadConversations: async (q) => {
-        try {
-            set({ conversations: await listConversations(q), error: null });
-        } catch (error) {
-            set({ error: errorMessage(error) });
-        }
-    },
-
-    open: async (id) => {
-        set({ loading: true, activeId: id, showHistory: false });
+    restore: async () => {
+        const id = get().activeId;
+        if (!id) return;
+        set({ loading: true });
         try {
             const detail = await getConversation(id);
             set({
@@ -118,41 +80,28 @@ export const useChat = create<ChatState>((set, get) => ({
                 context: detail.context,
                 loading: false,
                 error: null,
-                conversations: upsert(get().conversations, summaryOf(detail)),
             });
-        } catch (error) {
+        } catch {
+            // Gone on the server (or a different server): start fresh silently.
             set({
                 loading: false,
                 activeId: null,
                 messages: [],
                 context: null,
-                error: errorMessage(error),
             });
         }
     },
 
     newChat: async () => {
-        // Reuse an open, still-empty chat instead of piling up blank ones.
         const { activeId, messages } = get();
-        if (activeId && messages.length === 0) {
-            set({ showHistory: false });
-            return;
-        }
-        set({
-            activeId: null,
-            messages: [],
-            context: null,
-            showHistory: false,
-        });
-        try {
-            const detail = await createConversation();
-            set({
-                activeId: detail.id,
-                conversations: upsert(get().conversations, summaryOf(detail)),
-                error: null,
-            });
-        } catch (error) {
-            set({ error: errorMessage(error) });
+        if (activeId && messages.length === 0) return;
+        set({ activeId: null, messages: [], context: null, error: null });
+        if (activeId) {
+            try {
+                await deleteConversation(activeId);
+            } catch {
+                // nothing to clean up
+            }
         }
     },
 
@@ -165,15 +114,7 @@ export const useChat = create<ChatState>((set, get) => ({
             if (!id) {
                 const detail = await createConversation();
                 id = detail.id;
-                set({
-                    activeId: id,
-                    messages: [],
-                    context: null,
-                    conversations: upsert(
-                        get().conversations,
-                        summaryOf(detail),
-                    ),
-                });
+                set({ activeId: id, messages: [], context: null });
             }
             const optimistic: ChatMessage = {
                 id: `local-${Date.now()}`,
@@ -183,7 +124,7 @@ export const useChat = create<ChatState>((set, get) => ({
             };
             set((s) => ({ messages: [...s.messages, optimistic] }));
             const result = await sendChatMessage(id, text, get().options);
-            if (get().activeId !== id) return; // user switched chats meanwhile
+            if (get().activeId !== id) return;
             set((s) => ({
                 messages: [
                     ...s.messages.filter((m) => m.id !== optimistic.id),
@@ -191,10 +132,6 @@ export const useChat = create<ChatState>((set, get) => ({
                     result.assistant,
                 ],
                 context: result.conversation.context,
-                conversations: upsert(
-                    s.conversations,
-                    summaryOf(result.conversation),
-                ),
                 pending: false,
             }));
         } catch (error) {
@@ -203,29 +140,6 @@ export const useChat = create<ChatState>((set, get) => ({
                 messages: s.messages.filter((m) => !m.id.startsWith('local-')),
                 error: errorMessage(error),
             }));
-        }
-    },
-
-    rename: async (id, title) => {
-        try {
-            const summary = await renameConversation(id, title);
-            set((s) => ({ conversations: upsert(s.conversations, summary) }));
-        } catch (error) {
-            set({ error: errorMessage(error) });
-        }
-    },
-
-    remove: async (id) => {
-        try {
-            await deleteConversation(id);
-            set((s) => ({
-                conversations: s.conversations.filter((c) => c.id !== id),
-                ...(s.activeId === id
-                    ? { activeId: null, messages: [], context: null }
-                    : {}),
-            }));
-        } catch (error) {
-            set({ error: errorMessage(error) });
         }
     },
 
@@ -251,8 +165,6 @@ export const useChat = create<ChatState>((set, get) => ({
 
     setOptions: (options) =>
         set((s) => ({ options: { ...s.options, ...options } })),
-
-    setShowHistory: (showHistory) => set({ showHistory }),
 }));
 
 useChat.subscribe((state) => {

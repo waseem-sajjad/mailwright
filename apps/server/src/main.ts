@@ -14,6 +14,8 @@ async function bootstrap(): Promise<void> {
     app.useBodyParser('json', { limit: '12mb' });
     app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
     app.enableCors({ origin: config.corsOrigin.length > 0 ? config.corsOrigin : true });
+    // Behind nginx/Cloudflare the client IP (used for rate limits) comes from X-Forwarded-For.
+    if (config.trustProxy) app.set('trust proxy', 1);
     app.useGlobalFilters(new ApiExceptionFilter());
     app.enableShutdownHooks();
     await app.listen(config.port);

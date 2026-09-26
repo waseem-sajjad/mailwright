@@ -41,3 +41,9 @@ the document model, factories, tree ops, exporter, starters, merge-tag helpers
 and pre-flight checks now live there. Edit them in the package; DOM-bound
 helpers (`cn`, `storage`, `selection`, `mergeTagDom`, `api`, `screenshot`)
 stay here.
+
+## Public site
+
+One private AI conversation per browser (no history list), no vendor or model
+names in the UI, Google AdSense slots via `components/ads.tsx` when
+`VITE_ADSENSE_CLIENT` is set (`.env.example`, `public/ads.txt`).

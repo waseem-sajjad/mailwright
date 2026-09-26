@@ -10,6 +10,7 @@ export const envSchema = z
         GEMINI_MODEL: z.string().min(1).optional(),
         AI_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
         CORS_ORIGIN: z.string().optional(),
+        TRUST_PROXY: z.enum(['true', 'false']).optional(),
         WEB_DIST: z.string().optional(),
     })
     .passthrough();

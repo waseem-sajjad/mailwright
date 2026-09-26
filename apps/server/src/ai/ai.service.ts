@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import type { CanvasNode } from '@email-builder/shared/types';
 import { exportHtml, normalizeNode } from '@email-builder/shared/utils';
@@ -41,7 +41,6 @@ export interface GenerationResponse {
     id: string;
     name: string;
     engine: Engine;
-    model: string | null;
     dsl: string;
     root: CanvasNode;
     html: string;
@@ -105,10 +104,9 @@ export class AiService {
         @Inject(TemplatesService) private readonly templates: TemplatesService,
     ) {}
 
-    status() {
-        return this.gemini.enabled
-            ? { ok: true, engine: 'gemini' as const, model: this.gemini.model }
-            : { ok: true, engine: 'rules' as const, model: null };
+    /** Public health: no vendor or model names leave the server. */
+    status(): { ok: boolean; ai: boolean } {
+        return { ok: true, ai: this.gemini.enabled };
     }
 
     /* ---------- generation ---------- */
@@ -161,7 +159,6 @@ export class AiService {
             id,
             name: String(root.properties.title),
             engine,
-            model: engine === 'gemini' ? this.gemini.model : null,
             dsl,
             root,
             html: exportHtml(root),
@@ -217,7 +214,6 @@ export class AiService {
             id,
             name: String(root.properties.title),
             engine: next.engine,
-            model: next.engine === 'gemini' ? this.gemini.model : null,
             dsl: next.dsl,
             root,
             html: exportHtml(root),
@@ -304,22 +300,6 @@ export class AiService {
             data: { rating: Math.max(-1, Math.min(1, Math.round(rating))) },
         });
         return result.count > 0;
-    }
-
-    async history(limit = 50) {
-        const rows = await this.prisma.generation.findMany({
-            orderBy: { createdAt: 'desc' },
-            take: limit,
-            select: { id: true, prompt: true, options: true, dsl: true, engine: true, rating: true, createdAt: true },
-        });
-        return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
-    }
-
-    async historyItem(id: string) {
-        const row = await this.prisma.generation.findUnique({ where: { id } });
-        if (!row) throw new NotFoundException('not found');
-        const root = row.root as unknown as CanvasNode;
-        return { ...row, root, createdAt: row.createdAt.toISOString(), html: exportHtml(root) };
     }
 
     private async remember(input: {

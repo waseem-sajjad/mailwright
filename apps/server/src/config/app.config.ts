@@ -15,6 +15,7 @@ export const appConfig = registerAs('app', () => ({
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean),
+    trustProxy: process.env.TRUST_PROXY === 'true',
     webDist: process.env.WEB_DIST ?? path.resolve(process.cwd(), '../web/dist'),
 }));
 

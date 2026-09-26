@@ -36,7 +36,6 @@ export interface MessageGeneration {
     id: string;
     name: string;
     engine: Engine;
-    model: string | null;
     dsl: string;
     root: CanvasNode;
     html: string;
@@ -61,13 +60,12 @@ interface Payload {
     templates?: TemplateSummary[];
     applied?: string[];
     references?: Reference[];
-    model?: string | null;
 }
 
 const HISTORY_LIMIT = 8;
 const TITLE_LIMIT = 60;
 
-/** ChatGPT-style conversations: every turn is stored, and the server keeps the template context. */
+/** Conversations: every turn is stored and the server keeps the template context. No listing: chats are private to the browser that holds the id. */
 @Injectable()
 export class ChatService {
     private readonly logger = new Logger(ChatService.name);
@@ -79,26 +77,6 @@ export class ChatService {
     ) {}
 
     /* ---------- conversations ---------- */
-
-    async list(query: { q?: string; limit?: number }): Promise<ConversationSummary[]> {
-        const rows = await this.prisma.conversation.findMany({
-            where: query.q ? { title: { contains: query.q, mode: 'insensitive' } } : undefined,
-            orderBy: { updatedAt: 'desc' },
-            take: query.limit ?? 100,
-            include: {
-                _count: { select: { messages: true } },
-                messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { text: true } },
-            },
-        });
-        return rows.map((r) => ({
-            id: r.id,
-            title: r.title,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
-            messageCount: r._count.messages,
-            preview: r.messages[0]?.text.slice(0, 120) ?? null,
-        }));
-    }
 
     async create(title?: string): Promise<ConversationDetail> {
         const id = newId();
@@ -134,7 +112,6 @@ export class ChatService {
                     id: g.id,
                     name: String(root.properties.title ?? 'Untitled'),
                     engine: g.engine as Engine,
-                    model: payload.model ?? null,
                     dsl: g.dsl,
                     root,
                     html: exportHtml(root),
@@ -155,12 +132,6 @@ export class ChatService {
             context: (row.context as unknown as ChatContext | null) ?? null,
             messages,
         };
-    }
-
-    async rename(id: string, title: string): Promise<ConversationSummary> {
-        await this.ensure(id);
-        await this.prisma.conversation.update({ where: { id }, data: { title } });
-        return (await this.list({ limit: 200 })).find((c) => c.id === id) as ConversationSummary;
     }
 
     async remove(id: string): Promise<boolean> {
@@ -261,7 +232,7 @@ export class ChatService {
                 role: 'assistant',
                 text: result.summary,
                 generationId: result.id,
-                payload: { applied: result.applied, references: result.references, model: result.model },
+                payload: { applied: result.applied, references: result.references },
             });
         }
         const result = await this.ai.generate(text, options, previous, id);
@@ -270,7 +241,7 @@ export class ChatService {
             role: 'assistant',
             text: result.summary,
             generationId: result.id,
-            payload: { references: result.references, model: result.model },
+            payload: { references: result.references },
         });
     }
 
