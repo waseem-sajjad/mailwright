@@ -32,13 +32,20 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 ## Data model
 
 - The document is a plain serialisable tree of `EmailNode { id, type, properties, children }`
-  (`src/types/common.ts`). No classes, no parent pointers. Always create new
-  objects; never mutate a node in place.
+  (`packages/shared/src/types/common.ts`). No classes, no parent pointers.
+  Always create new objects; never mutate a node in place.
+- Types, factories, tree ops, the exporter, starters, merge-tag helpers and
+  pre-flight checks live in the workspace package `@email-builder/shared`
+  (`packages/shared/src`). The web app re-exports them from `@/types` and
+  `@/utils`, so component code imports those as before; DOM-bound helpers
+  (`cn`, `storage`, `selection`, `mergeTagDom`, `api`, `screenshot`) stay in
+  `apps/web/src/utils`. Nothing in the package may touch the DOM at import
+  time: the server bundles it.
 - Hierarchy is fixed: `Canvas → Row → Column → content`. Content types are
   everything except Canvas/Row/Column (`ContentType`).
-- All tree operations live in `src/utils/tree.ts` (find, insert, remove,
+- All tree operations live in `packages/shared/src/utils/tree.ts` (find, insert, remove,
   move, duplicate, mapNode). Use them instead of hand-rolling recursion.
-- Defaults for every block are factory functions in `src/utils/factory.ts`.
+- Defaults for every block are factory functions in `packages/shared/src/utils/factory.ts`.
   Row layouts are percentage arrays (`COLUMN_LAYOUTS`); `applyLayout` reshapes
   a row's columns while preserving content.
 - Schema changes: add new properties as optional OR add a default in the
@@ -124,10 +131,10 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 
 ## Add a new block type (checklist)
 
-1. `src/types/common.ts`: add the name to `ComponentType`.
-2. `src/types/properties.ts`: add `XProperties` and register it in `PropertiesOf`.
-3. `src/types/components.ts`: add `XNode`.
-4. `src/utils/factory.ts`: `xDefaults()` and an entry in `contentDefaults`.
+1. `packages/shared/src/types/common.ts`: add the name to `ComponentType`.
+2. `packages/shared/src/types/properties.ts`: add `XProperties` and register it in `PropertiesOf`.
+3. `packages/shared/src/types/components.ts`: add `XNode`.
+4. `packages/shared/src/utils/factory.ts`: `xDefaults()` and an entry in `contentDefaults`.
 5. `src/components/blocks.tsx`: icon, label and group in `blockMeta`
    (`content` for primitives, `section` for composed pieces like Product,
    Quote, Footer; the palette shows one collapsible per group).
@@ -144,39 +151,34 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 
 ## Server and AI (`apps/server`)
 
-- Express 5 + zod + axios + `node:sqlite`. Routes in `src/app.ts`; every body
-  is validated by a schema in `src/schemas.ts`. Express 5 types params as
-  `string | string[]`, use `paramId(req)`.
-- The server imports the web app's pure utils via `@/` → `../web/src`. Keep
-  `utils/index.ts` free of DOM/Vite modules (api.ts, screenshot.ts are
-  imported directly by components) or the server will crash at import.
-- AI: `src/ai.ts` asks Gemini through `@google/genai` (`GEMINI_API_KEY`,
-  `GEMINI_MODEL`, default `models/gemini-3.8-flash`) and falls back to
-  `src/generator.ts` (rules) when there is no key, the call fails or the
-  answer has no parseable row. Both emit the DSL in `src/dsl.ts`;
-  `dslToTree` expands it into a normalised canvas tree. The grammar the model
-  follows lives in `src/prompts.ts` (`SYSTEM_INSTRUCTION`): update it when
-  `dsl.ts` gains a block.
-- Chat context: generate/refine/subjects bodies accept `history` (earlier
-  prompts, max 10). `withHistory()` in `generator.ts` fills company, brand
-  colour, tone and type the new prompt leaves open; the web sends previous
-  user turns (generate) or the applied instructions (refine) from
-  `useChat.context.steps`.
+Full detail lives in the `nestjs-server` skill and `apps/server/CLAUDE.md`.
+What the web side must know:
+
+- NestJS + Prisma on PostgreSQL/pgvector. Routes: `/api/health`,
+  `/api/ai/{generate,refine,subjects,expand,rules,feedback,history}`,
+  `/api/templates` (`?q=` semantic search, `?kind=`), `/:id`, `/:id/similar`,
+  `/:id/screenshot`, `/:id/html`, `/:id/duplicate`. Errors are `{ error }`.
+- Generation options: `type`, `tone`, `size` (`standard` | `large`), `brand`,
+  `company`; bodies also take `history` (earlier chat prompts). Responses carry
+  `engine` (`gemini` | `rules`), `dsl`, `root`, `html`, `references` (library
+  templates pgvector matched to the brief).
+- Shared code is the `@email-builder/shared` package; keep DOM/Vite modules
+  (api.ts, screenshot.ts, storage, selection) in `apps/web/src/utils` only.
 - Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
   (`components/chat.tsx`, state in `hooks/useChat.ts`, persisted to
   localStorage). First message generates; later messages that look like
   edits call `/api/ai/refine` with the last DSL; "subject line" requests call
-  `/api/ai/subjects`. Each generation card has a DSL toggle (`DslView`) and
-  the context bar above the composer shows the brief, applied changes, the
-  current DSL and a reset (`resetContext`). The template library is server-only
-  (`components/library.tsx`): screenshots via `captureCanvas()`
+  `/api/ai/subjects`; "find/search … templates" messages list library matches
+  (`LibraryHit`). Each generation card has a DSL toggle (`DslView`), a
+  "Save to library" button (sends the DSL) and shows its references; the
+  context bar shows the brief, applied changes, current DSL and a reset.
+- Template library (`components/library.tsx`) is server-only: debounced
+  server search (`listCloudTemplates({ q })`, "Best match" sort when scores
+  come back), a Similar action per card, screenshots via `captureCanvas()`
   (`html-to-image`; `data-editor-only` elements are skipped) with a live
-  scaled iframe as fallback thumbnail. There is no localStorage library.
+  scaled iframe as fallback thumbnail.
 - `utils/api-bridge.ts` exists only so the chat panel can import a few
-  shared helpers without touching the barrel; keep DOM/axios modules out of
-  `utils/index.ts`.
-- Verify the server with `pnpm build` then curl the routes; the store and
-  export smoke tests still run via the esbuild recipe above.
+  shared helpers without touching the barrel.
 
 ## Lint conventions that bite
 
