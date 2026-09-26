@@ -37,7 +37,15 @@ and semantic search, and generation history.
 - `ai/engine/` – pure code shared with nothing else: `dsl.ts` (parse/expand/stringify),
   `generator.ts` (rules engine, `size: 'large'` adds extra sections, `withHistory()`),
   `refine.ts`, `subjects.ts`, `prompts.ts` (Gemini grammar + prompt builders).
-- `ai/schemas.ts`, `templates/schemas.ts` – zod bodies; bound per route with
+- `chat/` – ChatGPT-style conversations stored in Postgres (`conversations`,
+  `messages`; generations link back via `conversation_id`). `chat.service.ts` runs a
+  turn: stores the user message, classifies it (`chat/intent.ts`: library search /
+  subject lines / refinement / generation), calls `AiService` with the conversation's
+  own context (brief + current DSL + applied steps, kept in `conversation.context`) and
+  earlier prompts, stores the answer, auto-titles the chat from the first prompt.
+  Routes: `GET/POST /api/chat`, `GET/PATCH/DELETE /api/chat/:id`,
+  `POST /api/chat/:id/messages`, `POST /api/chat/:id/reset`.
+- `ai/schemas.ts`, `templates/schemas.ts`, `chat/schemas.ts` – zod bodies; bound per route with
   `ZodValidationPipe` (`common/zod.pipe.ts`). Errors leave as `{ error, issues? }`.
 - `templates/templates.service.ts` – CRUD, screenshots as `Bytes`, `list({ q })`
   (vector search when embeddings work, ILIKE otherwise), `similar(id)`, `embedTemplate`,

@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 
 import { AiModule } from './ai/ai.module';
+import { ChatModule } from './chat/chat.module';
 import { ProvidersModule } from './ai/providers.module';
 import { type AppConfig, appConfig } from './config/app.config';
 import { validateEnv } from './config/env.validation';
@@ -25,6 +26,7 @@ import { TemplatesModule } from './templates/templates.module';
         ProvidersModule,
         TemplatesModule,
         AiModule,
+        ChatModule,
     ],
     controllers: [HealthController],
 })

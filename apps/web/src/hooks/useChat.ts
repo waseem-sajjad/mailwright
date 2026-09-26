@@ -1,226 +1,231 @@
 import { create } from 'zustand';
 
-import type { CanvasNode } from '@/types';
 import type {
     AiOptions,
-    CloudTemplate,
-    Generation,
-    SubjectIdeas,
+    ChatContext,
+    ChatMessage,
+    ConversationSummary,
 } from '@/utils/api';
 import {
-    aiGenerate,
-    aiRefine,
-    aiSubjects,
+    createConversation,
+    deleteConversation,
     errorMessage,
-    listCloudTemplates,
+    getConversation,
+    listConversations,
+    renameConversation,
+    resetConversation,
+    sendChatMessage,
 } from '@/utils/api';
 
-export interface ChatMessage {
-    id: string;
-    role: 'user' | 'assistant';
-    text: string;
-    createdAt: string;
-    /** A generated or refined template attached to an assistant reply. */
-    generation?: Generation & { applied?: string[]; rating?: 1 | -1 | 0 };
-    subjects?: SubjectIdeas;
-    /** Library templates found for a "find templates about…" message. */
-    templates?: CloudTemplate[];
-    error?: boolean;
-}
+export type { ChatContext, ChatMessage, ConversationSummary };
 
-export interface ChatContext {
-    prompt: string;
-    dsl: string;
-    steps: string[];
-}
-
+/**
+ * Chat state. Conversations and messages live on the server (ChatGPT-style
+ * history); only the open conversation id and the generation options are
+ * remembered locally.
+ */
 interface ChatState {
+    conversations: ConversationSummary[];
+    activeId: string | null;
     messages: ChatMessage[];
-    pending: boolean;
-    options: AiOptions;
-    /**
-     * The brief, the current DSL and the follow-up instructions already
-     * applied to it. Every request sends this history so the AI keeps the
-     * company, colour and tone of earlier turns.
-     */
+    /** The brief, DSL and applied instructions the next edit starts from. */
     context: ChatContext | null;
+    loading: boolean;
+    pending: boolean;
+    error: string | null;
+    showHistory: boolean;
+    options: AiOptions;
 
-    setOptions: (options: Partial<AiOptions>) => void;
+    loadConversations: (q?: string) => Promise<void>;
+    open: (id: string) => Promise<void>;
+    newChat: () => Promise<void>;
     send: (text: string) => Promise<void>;
+    rename: (id: string, title: string) => Promise<void>;
+    remove: (id: string) => Promise<void>;
     rate: (messageId: string, rating: 1 | -1) => void;
-    /** Keeps the conversation but starts the next prompt from scratch. */
-    resetContext: () => void;
-    clear: () => void;
+    resetContext: () => Promise<void>;
+    setOptions: (options: Partial<AiOptions>) => void;
+    setShowHistory: (show: boolean) => void;
 }
 
-/** Most recent prompts, oldest first, capped to what the server accepts. */
-const HISTORY_LIMIT = 8;
+const STORAGE_KEY = 'email-template-builder:chat:v2';
+const DEFAULT_OPTIONS: AiOptions = {
+    type: 'auto',
+    tone: 'auto',
+    size: 'standard',
+};
 
-const STORAGE_KEY = 'email-template-builder:chat';
-const newId = () => Math.random().toString(36).slice(2, 10);
-const stamp = () => new Date().toISOString();
-
-const load = (): Pick<ChatState, 'messages' | 'context' | 'options'> => {
+const load = (): { activeId: string | null; options: AiOptions } => {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) throw new Error('empty');
-        const parsed = JSON.parse(raw) as Pick<
-            ChatState,
-            'messages' | 'context' | 'options'
-        >;
+        const parsed = JSON.parse(raw) as {
+            activeId?: string | null;
+            options?: AiOptions;
+        };
         return {
-            messages: Array.isArray(parsed.messages) ? parsed.messages : [],
-            context: parsed.context
-                ? { ...parsed.context, steps: parsed.context.steps ?? [] }
-                : null,
-            options: parsed.options ?? {
-                type: 'auto',
-                tone: 'auto',
-                size: 'standard',
-            },
+            activeId: parsed.activeId ?? null,
+            options: { ...DEFAULT_OPTIONS, ...parsed.options },
         };
     } catch {
-        return {
-            messages: [],
-            context: null,
-            options: { type: 'auto', tone: 'auto', size: 'standard' },
-        };
+        return { activeId: null, options: DEFAULT_OPTIONS };
     }
 };
 
-const isRefinement = (text: string): boolean =>
-    /^(make|change|set|add|insert|remove|delete|drop|use|switch|turn|replace|shorten|shorter|more|less|without|update|rename|put)\b/i.test(
-        text.trim(),
-    ) ||
-    /\b(it|this|the (header|hero|button|heading|title|coupon|footer|tone|colou?r))\b/i.test(
-        text,
+const summaryOf = (
+    detail: ConversationSummary & { messages?: unknown[] },
+): ConversationSummary => ({
+    id: detail.id,
+    title: detail.title,
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+    messageCount: detail.messageCount,
+    preview: detail.preview,
+});
+
+const upsert = (
+    list: ConversationSummary[],
+    item: ConversationSummary,
+): ConversationSummary[] =>
+    [item, ...list.filter((c) => c.id !== item.id)].sort((a, b) =>
+        b.updatedAt.localeCompare(a.updatedAt),
     );
-
-/** "find templates about coffee", "search the library for sales", "similar templates to a webinar invite". */
-const librarySearch = (text: string): string | null => {
-    if (
-        !/^(find|search|show( me)?|look( up| for)?|list|any)\b/i.test(
-            text.trim(),
-        ) ||
-        !/\b(templates?|library|saved)\b/i.test(text)
-    )
-        return null;
-    return text
-        .replace(
-            /^(find|search( for)?|show( me)?|look( up| for)?|list|any)\s+/i,
-            '',
-        )
-        .replace(/\b(me|some|all|the|my|our)\b\s*/gi, '')
-        .replace(/\b(in|from)\s+(the\s+|my\s+)?library\b/gi, '')
-        .replace(/\b(saved\s+)?templates?\b/gi, '')
-        .replace(/\b(about|for|like|similar to|on)\b/i, '')
-        .trim();
-};
-
-const wantsSubjects = (text: string): boolean =>
-    /\b(subject( line)?s?|preheaders?)\b/i.test(text) &&
-    /\b(suggest|ideas?|give|write|options|some|what|need)\b/i.test(text);
 
 export const useChat = create<ChatState>((set, get) => ({
     ...load(),
+    conversations: [],
+    messages: [],
+    context: null,
+    loading: false,
     pending: false,
+    error: null,
+    showHistory: false,
 
-    setOptions: (options) =>
-        set((s) => ({ options: { ...s.options, ...options } })),
+    loadConversations: async (q) => {
+        try {
+            set({ conversations: await listConversations(q), error: null });
+        } catch (error) {
+            set({ error: errorMessage(error) });
+        }
+    },
+
+    open: async (id) => {
+        set({ loading: true, activeId: id, showHistory: false });
+        try {
+            const detail = await getConversation(id);
+            set({
+                messages: detail.messages,
+                context: detail.context,
+                loading: false,
+                error: null,
+                conversations: upsert(get().conversations, summaryOf(detail)),
+            });
+        } catch (error) {
+            set({
+                loading: false,
+                activeId: null,
+                messages: [],
+                context: null,
+                error: errorMessage(error),
+            });
+        }
+    },
+
+    newChat: async () => {
+        // Reuse an open, still-empty chat instead of piling up blank ones.
+        const { activeId, messages } = get();
+        if (activeId && messages.length === 0) {
+            set({ showHistory: false });
+            return;
+        }
+        set({
+            activeId: null,
+            messages: [],
+            context: null,
+            showHistory: false,
+        });
+        try {
+            const detail = await createConversation();
+            set({
+                activeId: detail.id,
+                conversations: upsert(get().conversations, summaryOf(detail)),
+                error: null,
+            });
+        } catch (error) {
+            set({ error: errorMessage(error) });
+        }
+    },
 
     send: async (raw) => {
         const text = raw.trim();
         if (!text || get().pending) return;
-        const user: ChatMessage = {
-            id: newId(),
-            role: 'user',
-            text,
-            createdAt: stamp(),
-        };
-        set((s) => ({ messages: [...s.messages, user], pending: true }));
-
-        const reply = (
-            message: Omit<ChatMessage, 'id' | 'role' | 'createdAt'>,
-        ) =>
+        let id = get().activeId;
+        set({ pending: true, error: null });
+        try {
+            if (!id) {
+                const detail = await createConversation();
+                id = detail.id;
+                set({
+                    activeId: id,
+                    messages: [],
+                    context: null,
+                    conversations: upsert(
+                        get().conversations,
+                        summaryOf(detail),
+                    ),
+                });
+            }
+            const optimistic: ChatMessage = {
+                id: `local-${Date.now()}`,
+                role: 'user',
+                text,
+                createdAt: new Date().toISOString(),
+            };
+            set((s) => ({ messages: [...s.messages, optimistic] }));
+            const result = await sendChatMessage(id, text, get().options);
+            if (get().activeId !== id) return; // user switched chats meanwhile
             set((s) => ({
                 messages: [
-                    ...s.messages,
-                    {
-                        id: newId(),
-                        role: 'assistant',
-                        createdAt: stamp(),
-                        ...message,
-                    },
+                    ...s.messages.filter((m) => m.id !== optimistic.id),
+                    result.user,
+                    result.assistant,
                 ],
+                context: result.conversation.context,
+                conversations: upsert(
+                    s.conversations,
+                    summaryOf(result.conversation),
+                ),
                 pending: false,
             }));
-
-        const { context, options, messages } = get();
-        // Earlier user turns (this one excluded) give the engines context.
-        const previous = messages
-            .filter((m) => m.role === 'user' && m.id !== user.id)
-            .map((m) => m.text)
-            .slice(-HISTORY_LIMIT);
-        try {
-            const search = librarySearch(text);
-            if (search !== null) {
-                const found = await listCloudTemplates({
-                    q: search || undefined,
-                    limit: 6,
-                });
-                reply({
-                    text:
-                        found.length > 0
-                            ? `Here ${found.length === 1 ? 'is' : 'are'} ${found.length} template${found.length === 1 ? '' : 's'} from the library${search ? ` for “${search}”` : ''}:`
-                            : `Nothing in the library matches “${search}”.`,
-                    templates: found,
-                });
-                return;
-            }
-            if (wantsSubjects(text)) {
-                const subjects = await aiSubjects(
-                    text,
-                    options,
-                    context ? [context.prompt, ...context.steps] : previous,
-                );
-                reply({
-                    text: 'Here are some subject lines and preheaders you could use:',
-                    subjects,
-                });
-                return;
-            }
-            if (context && isRefinement(text)) {
-                const result = await aiRefine({
-                    prompt: context.prompt,
-                    dsl: context.dsl,
-                    instruction: text,
-                    options,
-                    history: context.steps.slice(-HISTORY_LIMIT),
-                });
-                set({
-                    context: {
-                        prompt: context.prompt,
-                        dsl: result.dsl,
-                        steps: [...context.steps, text],
-                    },
-                });
-                reply({
-                    text:
-                        result.applied.length > 0
-                            ? result.applied.join('. ')
-                            : 'Updated the template.',
-                    generation: { ...result, rating: 0 },
-                });
-                return;
-            }
-            const generation = await aiGenerate(text, options, previous);
-            set({ context: { prompt: text, dsl: generation.dsl, steps: [] } });
-            reply({
-                text: `Here's a first draft of “${generation.name}”. Tell me what to change, or apply it to the editor.`,
-                generation: { ...generation, rating: 0 },
-            });
         } catch (error) {
-            reply({ text: errorMessage(error), error: true });
+            set((s) => ({
+                pending: false,
+                messages: s.messages.filter((m) => !m.id.startsWith('local-')),
+                error: errorMessage(error),
+            }));
+        }
+    },
+
+    rename: async (id, title) => {
+        try {
+            const summary = await renameConversation(id, title);
+            set((s) => ({ conversations: upsert(s.conversations, summary) }));
+        } catch (error) {
+            set({ error: errorMessage(error) });
+        }
+    },
+
+    remove: async (id) => {
+        try {
+            await deleteConversation(id);
+            set((s) => ({
+                conversations: s.conversations.filter((c) => c.id !== id),
+                ...(s.activeId === id
+                    ? { activeId: null, messages: [], context: null }
+                    : {}),
+            }));
+        } catch (error) {
+            set({ error: errorMessage(error) });
         }
     },
 
@@ -233,31 +238,29 @@ export const useChat = create<ChatState>((set, get) => ({
             ),
         })),
 
-    resetContext: () => set({ context: null }),
+    resetContext: async () => {
+        const id = get().activeId;
+        if (!id) return;
+        set({ context: null });
+        try {
+            await resetConversation(id);
+        } catch (error) {
+            set({ error: errorMessage(error) });
+        }
+    },
 
-    clear: () => set({ messages: [], context: null }),
+    setOptions: (options) =>
+        set((s) => ({ options: { ...s.options, ...options } })),
+
+    setShowHistory: (showHistory) => set({ showHistory }),
 }));
 
 useChat.subscribe((state) => {
     try {
-        // Keep the conversation but not the heavy HTML/root payloads of old turns.
-        const messages = state.messages.slice(-30).map((m) =>
-            m.generation
-                ? {
-                      ...m,
-                      generation: {
-                          ...m.generation,
-                          html: '',
-                          root: m.generation.root,
-                      },
-                  }
-                : m,
-        );
         localStorage.setItem(
             STORAGE_KEY,
             JSON.stringify({
-                messages,
-                context: state.context,
+                activeId: state.activeId,
                 options: state.options,
             }),
         );
@@ -265,7 +268,3 @@ useChat.subscribe((state) => {
         // storage full or unavailable
     }
 });
-
-/** Applies a generation to the editor; returns the root so callers can load it. */
-export const generationRoot = (message: ChatMessage): CanvasNode | null =>
-    message.generation?.root ?? null;

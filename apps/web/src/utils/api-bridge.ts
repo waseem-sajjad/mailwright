@@ -10,7 +10,9 @@ export {
     saveCloudTemplate,
     screenshotUrl,
     templateHtmlUrl,
+    type ChatMessage,
     type CloudTemplate,
+    type ConversationSummary,
     type Health,
 } from './api';
 export { copyToClipboard } from './storage';

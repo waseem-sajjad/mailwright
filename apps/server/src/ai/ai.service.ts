@@ -74,7 +74,12 @@ export class AiService {
             : { ok: true, engine: 'rules' as const, model: null, embeddings };
     }
 
-    async generate(prompt: string, options: GenerateOptions, history: string[]): Promise<GenerationResponse> {
+    async generate(
+        prompt: string,
+        options: GenerateOptions,
+        history: string[],
+        conversationId?: string,
+    ): Promise<GenerationResponse> {
         const effective = withHistory(prompt, options, history);
         const embedding = await this.embeddings.embed(prompt, 'RETRIEVAL_QUERY');
         const examples = embedding ? await this.templates.similarByVector(embedding, 2, { withDsl: true }) : [];
@@ -100,7 +105,15 @@ export class AiService {
             engine = 'rules';
         }
         const root = toRoot(dsl);
-        const id = await this.remember({ prompt, options: { ...effective, history }, dsl, root, engine, embedding });
+        const id = await this.remember({
+            prompt,
+            options: { ...effective, history },
+            dsl,
+            root,
+            engine,
+            embedding,
+            conversationId,
+        });
         return {
             id,
             name: String(root.properties.title),
@@ -119,6 +132,7 @@ export class AiService {
         instruction: string,
         options: GenerateOptions,
         history: string[],
+        conversationId?: string,
     ): Promise<RefinementResponse> {
         const effective = withHistory(instruction, options, [prompt, ...history]);
         const answer = await this.gemini.text(SYSTEM_INSTRUCTION, refinePrompt(prompt, dsl, instruction, history), 0.4);
@@ -138,6 +152,7 @@ export class AiService {
             root,
             engine: next.engine,
             embedding: await this.embeddings.embed(`${prompt}. ${instruction}`, 'RETRIEVAL_DOCUMENT'),
+            conversationId,
         });
         return {
             id,
@@ -201,11 +216,13 @@ export class AiService {
         root: CanvasNode;
         engine: Engine;
         embedding: number[] | null;
+        conversationId?: string;
     }): Promise<string> {
         const id = newId();
         await this.prisma.generation.create({
             data: {
                 id,
+                conversationId: input.conversationId ?? null,
                 prompt: input.prompt,
                 options: input.options as Prisma.InputJsonValue,
                 dsl: input.dsl,

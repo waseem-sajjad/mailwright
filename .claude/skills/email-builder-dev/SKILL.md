@@ -165,13 +165,16 @@ What the web side must know:
 - Shared code is the `@email-builder/shared` package; keep DOM/Vite modules
   (api.ts, screenshot.ts, storage, selection) in `apps/web/src/utils` only.
 - Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
-  (`components/chat.tsx`, state in `hooks/useChat.ts`, persisted to
-  localStorage). First message generates; later messages that look like
-  edits call `/api/ai/refine` with the last DSL; "subject line" requests call
-  `/api/ai/subjects`; "find/search … templates" messages list library matches
-  (`LibraryHit`). Each generation card has a DSL toggle (`DslView`), a
-  "Save to library" button (sends the DSL) and shows its references; the
-  context bar shows the brief, applied changes, current DSL and a reset.
+  (`components/chat.tsx`, state in `hooks/useChat.ts`). Conversations and
+  messages live on the server (`/api/chat`, ChatGPT-style history); the
+  store keeps only `activeId` and the options in localStorage. `send()`
+  creates a conversation on demand, shows the user message optimistically,
+  then swaps in the server's user + assistant messages and context. The
+  panel header toggles a history view (search, open, rename, delete, New
+  chat); the server decides intent (search / subjects / refine / generate).
+  Each generation card has a DSL toggle (`DslView`), a "Save to library"
+  button (sends the DSL) and shows its references; the context bar shows
+  the brief, applied changes, current DSL and a reset (server-side).
 - Template library (`components/library.tsx`) is server-only: debounced
   server search (`listCloudTemplates({ q })`, "Best match" sort when scores
   come back), a Similar action per card, screenshots via `captureCanvas()`

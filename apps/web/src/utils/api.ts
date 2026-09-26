@@ -196,3 +196,81 @@ export const screenshotUrl = (template: CloudTemplate): string | null =>
     template.screenshot
         ? `${api.defaults.baseURL ?? ''}${template.screenshot}?v=${encodeURIComponent(template.updatedAt)}`
         : null;
+
+/* ---------- chat conversations (ChatGPT-style history, stored on the server) ---------- */
+
+export interface ChatContext {
+    prompt: string;
+    dsl: string;
+    steps: string[];
+}
+
+export interface ConversationSummary {
+    id: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    messageCount: number;
+    preview: string | null;
+}
+
+export interface MessageGeneration extends Generation {
+    applied: string[];
+    rating: number;
+}
+
+export interface ChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    text: string;
+    createdAt: string;
+    generation?: MessageGeneration;
+    subjects?: SubjectIdeas;
+    templates?: CloudTemplate[];
+    error?: boolean;
+}
+
+export interface ConversationDetail extends ConversationSummary {
+    context: ChatContext | null;
+    messages: ChatMessage[];
+}
+
+export const listConversations = async (
+    q?: string,
+): Promise<ConversationSummary[]> =>
+    (await api.get<ConversationSummary[]>('/api/chat', { params: { q } })).data;
+
+export const createConversation = async (
+    title?: string,
+): Promise<ConversationDetail> =>
+    (await api.post<ConversationDetail>('/api/chat', { title })).data;
+
+export const getConversation = async (
+    id: string,
+): Promise<ConversationDetail> =>
+    (await api.get<ConversationDetail>(`/api/chat/${id}`)).data;
+
+export const renameConversation = async (
+    id: string,
+    title: string,
+): Promise<ConversationSummary> =>
+    (await api.patch<ConversationSummary>(`/api/chat/${id}`, { title })).data;
+
+export const deleteConversation = async (id: string): Promise<void> => {
+    await api.delete(`/api/chat/${id}`);
+};
+
+/** One turn: the server stores the user message, answers it and returns both. */
+export const sendChatMessage = async (
+    id: string,
+    text: string,
+    options: AiOptions,
+): Promise<{
+    user: ChatMessage;
+    assistant: ChatMessage;
+    conversation: ConversationDetail;
+}> => (await api.post(`/api/chat/${id}/messages`, { text, options })).data;
+
+export const resetConversation = async (id: string): Promise<void> => {
+    await api.post(`/api/chat/${id}/reset`);
+};

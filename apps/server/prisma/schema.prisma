@@ -31,8 +31,9 @@ model Template {
 }
 
 model Generation {
-  id        String                       @id
-  prompt    String
+  id             String                       @id
+  conversationId String?                      @map("conversation_id")
+  prompt         String
   options   Json
   dsl       String
   root      Json
@@ -42,5 +43,37 @@ model Generation {
   createdAt DateTime                     @default(now()) @map("created_at")
 
   @@index([createdAt])
+  @@index([conversationId])
   @@map("generations")
+}
+
+/// A chat thread with the assistant (ChatGPT-style history).
+model Conversation {
+  id        String    @id
+  title     String    @default("New chat")
+  /// The brief, current DSL and applied instructions the next edit starts from.
+  context   Json?
+  messages  Message[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([updatedAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String       @map("conversation_id")
+  role           String
+  text           String
+  /// Generation attached to an assistant reply (template draft or refinement).
+  generationId   String?      @map("generation_id")
+  /// Subject-line ideas, library search hits, applied instructions: small JSON payloads.
+  payload        Json?
+  error          Boolean      @default(false)
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }

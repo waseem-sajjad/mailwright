@@ -65,6 +65,19 @@ line (it kills the shell): kill by port with `fuser -k 8787/tcp`.
   prefixes, unit-normalised; provider chosen by `EMBEDDINGS_PROVIDER`).
   Both degrade to `null` so callers fall back (rules engine / keyword search).
 
+## Chat module
+
+`chat/chat.service.ts` owns the conversation flow; the web store is a thin
+client. A turn = `send(conversationId, text, options)`: append the user
+message → `classify()` (`chat/intent.ts`) → search / subjects / refine /
+generate through `AiService` (which links the generation to the
+conversation) → append the assistant message with `generationId` and a small
+`payload` (subjects, template hits, applied steps, references, model) →
+bump `updatedAt`. `get()` expands messages by joining `generations`
+(`dsl`, `root`, `rating`) and rendering `html` on the fly. Context lives in
+`conversation.context` (`{ prompt, dsl, steps }`); `reset` clears it with
+`Prisma.DbNull`. Intent rules are plain functions: extend them there.
+
 ## Adding things
 
 - **Route**: controller method + zod schema + service method. Keep controllers
