@@ -1,4 +1,4 @@
-import { AI_URL, modelStatus } from './ai.ts';
+import { GEMINI_MODEL, modelStatus } from './ai.ts';
 import { createApp } from './app.ts';
 
 // Node 22 can read a .env file natively; ignore when it does not exist.
@@ -17,15 +17,14 @@ app.listen(port, async () => {
     const status = await modelStatus();
     if (status.ok) {
         // eslint-disable-next-line no-console
-        console.log(`AI: fine-tuned model "${status.name}" at ${AI_URL}`);
+        console.log(`AI: Gemini (${GEMINI_MODEL})`);
     } else {
         // eslint-disable-next-line no-console
         console.log(
             [
-                `AI: rules engine (no model service answering at ${AI_URL}).`,
-                '    To use the fine-tuned model: cd apps/server && python3 ai/pipeline.py',
-                '    then: uvicorn ai.serve:app --port 8000   (see ai/README.md)',
-                '    The server re-checks every 30 s, no restart needed.',
+                'AI: rules engine (GEMINI_API_KEY is not set).',
+                '    Put GEMINI_API_KEY=... in apps/server/.env to generate with Gemini;',
+                `    GEMINI_MODEL overrides the model (default ${GEMINI_MODEL}).`,
             ].join('\n'),
         );
     }

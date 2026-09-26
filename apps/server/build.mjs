@@ -10,7 +10,7 @@ await build({
     target: 'node22',
     // Bundle everything (including the web app's helpers and their deps) except
     // the server's own runtime packages and Node built-ins.
-    external: ['express', 'cors', 'axios', 'zod', 'nanoid', 'node:*'],
+    external: ['express', 'cors', 'axios', 'zod', 'nanoid', '@google/genai', 'node:*'],
     alias: { '@': '../web/src' },
     outfile: 'dist/index.mjs',
     logLevel: 'info',

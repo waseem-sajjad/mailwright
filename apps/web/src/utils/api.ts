@@ -18,7 +18,7 @@ export interface AiOptions {
 export interface Generation {
     id: string;
     name: string;
-    engine: 'model' | 'rules';
+    engine: 'gemini' | 'rules';
     model: string | null;
     dsl: string;
     root: CanvasNode;
@@ -47,7 +47,7 @@ export interface CloudTemplate {
 
 export interface Health {
     ok: boolean;
-    engine: 'model' | 'rules';
+    engine: 'gemini' | 'rules';
     model: string | null;
 }
 
@@ -97,6 +97,7 @@ export interface SubjectIdeas {
     subjects: string[];
     preheaders: string[];
     type: string;
+    engine?: 'gemini' | 'rules';
 }
 
 export const aiSubjects = async (

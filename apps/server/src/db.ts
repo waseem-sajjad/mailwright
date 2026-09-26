@@ -206,12 +206,4 @@ export const generations = {
             .run(Math.max(-1, Math.min(1, Math.round(rating))), id);
         return Number(result.changes) > 0;
     },
-    /** Prompt/DSL pairs the user liked; merged into the training set. */
-    approved(): { prompt: string; dsl: string }[] {
-        return (
-            db
-                .prepare('SELECT prompt, dsl FROM generations WHERE rating > 0')
-                .all() as Raw[]
-        ).map((r) => ({ prompt: String(r.prompt), dsl: String(r.dsl) }));
-    },
 };

@@ -7,8 +7,7 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "start": "pnpm --filter server start",
-    "dataset": "pnpm --filter server dataset"
+    "start": "pnpm --filter server start"
   },
   "keywords": [],
   "author": "",

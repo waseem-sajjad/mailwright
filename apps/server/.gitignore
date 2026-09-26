@@ -1,7 +1,4 @@
 node_modules
 dist
 data/
-models/
-.venv/
-__pycache__/
 .env

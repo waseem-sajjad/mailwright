@@ -226,32 +226,3 @@ export const refineDsl = (
     return { dsl: stringifyDsl(doc), applied };
 };
 
-/** Instruction bank for synthesising refinement training pairs. */
-export const REFINE_INSTRUCTIONS: string[] = [
-    'make the header dark',
-    'make the header light',
-    'make the hero brand coloured',
-    'make it professional',
-    'use a playful tone',
-    'make the tone urgent',
-    'change the brand colour to #16a34a',
-    'use #7c3aed as the brand color',
-    'add a coupon SAVE15',
-    'add a table with the order summary',
-    'add a testimonial',
-    'add a video',
-    'add a button "Book a demo"',
-    'add a callout',
-    'add a product',
-    'add social icons',
-    'remove the coupon',
-    'remove the menu',
-    'remove the social icons',
-    'remove the video',
-    'change the button text to "Start free trial"',
-    'change the heading to "Big news"',
-    'set the title to "A quick update"',
-    'make it shorter',
-    'remove the greeting',
-    'set the background to #ffffff',
-];

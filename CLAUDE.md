@@ -3,11 +3,11 @@
 pnpm workspace with two apps:
 
 - `apps/web` – the drag-and-drop editor (Vite + React). See `apps/web/CLAUDE.md`.
-- `apps/server` – Express + SQLite API: AI template generation (rules engine or
-  a fine-tuned flan-t5 served by Python), template library with screenshots.
-  See `apps/server/CLAUDE.md` and `apps/server/ai/README.md`.
+- `apps/server` – Express + SQLite API: AI template generation (Gemini via
+  `@google/genai`, rules-engine fallback), template library with screenshots.
+  See `apps/server/CLAUDE.md`.
 
-Root scripts: `pnpm dev` (both apps), `pnpm build`, `pnpm lint`, `pnpm dataset`,
+Root scripts: `pnpm dev` (both apps), `pnpm build`, `pnpm lint`,
 `pnpm start` (server; serves `apps/web/dist` too). In dev, Vite proxies `/api`
 to the server on 8787.
 

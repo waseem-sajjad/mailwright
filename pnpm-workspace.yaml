@@ -2,8 +2,10 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  '@google/genai': false
   '@swc/core': true
   esbuild: true
+  protobufjs: false
 # Hoist type packages so declaration files inside the pnpm store can see them.
 publicHoistPattern:
   - '@types/*'

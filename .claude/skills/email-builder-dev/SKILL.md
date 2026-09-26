@@ -150,20 +150,18 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 - The server imports the web app's pure utils via `@/` → `../web/src`. Keep
   `utils/index.ts` free of DOM/Vite modules (api.ts, screenshot.ts are
   imported directly by components) or the server will crash at import.
-- AI: `src/ai.ts` tries the Python model service (`AI_URL`, `ai/serve.py`)
-  and falls back to `src/generator.ts` (rules). Both emit the DSL in
-  `src/dsl.ts`; `dslToTree` expands it into a normalised canvas tree.
-- Model text codec: T5 drops newlines and braces, so `src/prompts.ts`
-  (`encodeForModel`/`decodeFromModel`, mirrored in `ai/codec.py`) swaps them
-  for ` @@ ` and `[[tag]]`. `repairDsl()` also fixes flat output from older
-  checkpoints. Change the codec in both places and retrain.
+- AI: `src/ai.ts` asks Gemini through `@google/genai` (`GEMINI_API_KEY`,
+  `GEMINI_MODEL`, default `models/gemini-3.8-flash`) and falls back to
+  `src/generator.ts` (rules) when there is no key, the call fails or the
+  answer has no parseable row. Both emit the DSL in `src/dsl.ts`;
+  `dslToTree` expands it into a normalised canvas tree. The grammar the model
+  follows lives in `src/prompts.ts` (`SYSTEM_INSTRUCTION`): update it when
+  `dsl.ts` gains a block.
 - Chat context: generate/refine/subjects bodies accept `history` (earlier
   prompts, max 10). `withHistory()` in `generator.ts` fills company, brand
   colour, tone and type the new prompt leaves open; the web sends previous
   user turns (generate) or the applied instructions (refine) from
   `useChat.context.steps`.
-- Dataset = rules engine output + 👍-rated generations (`pnpm dataset`).
-  Training is Python (`ai/train.py`, GPU auto-detected, bf16 on CUDA).
 - Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
   (`components/chat.tsx`, state in `hooks/useChat.ts`, persisted to
   localStorage). First message generates; later messages that look like

@@ -141,8 +141,7 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
         rate(message.id, rating);
         try {
             await aiFeedback(g.id, rating);
-            if (rating === 1)
-                notify('Thanks. This example will train the model.', 'info');
+            if (rating === 1) notify('Thanks for the feedback.', 'info');
         } catch {
             // feedback is best-effort
         }
@@ -182,8 +181,8 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                                 {g.name}
                             </div>
                             <div className="text-[10px] text-gray-400">
-                                {g.engine === 'model'
-                                    ? `fine-tuned model${g.model ? ` · ${g.model}` : ''}`
+                                {g.engine === 'gemini'
+                                    ? `Gemini${g.model ? ` · ${g.model.replace(/^models\//, '')}` : ''}`
                                     : 'rules engine'}
                             </div>
                         </div>
@@ -350,11 +349,11 @@ export const ChatPanel: React.FC = () => {
                         </div>
                         <div className="text-[10px] text-gray-400">
                             {health === null ? 'server offline' : null}
-                            {health?.engine === 'model'
-                                ? `fine-tuned model · ${health.model}`
+                            {health?.engine === 'gemini'
+                                ? `Gemini · ${health.model?.replace(/^models\//, '')}`
                                 : null}
                             {health?.engine === 'rules'
-                                ? 'rules engine · train a model to upgrade'
+                                ? 'rules engine · set GEMINI_API_KEY for Gemini'
                                 : null}
                         </div>
                     </div>

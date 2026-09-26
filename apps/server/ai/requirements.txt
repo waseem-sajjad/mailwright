@@ -1,9 +1,0 @@
-# CPU-only stack that fits a small VPS (2 vCPU / 4 GB is enough for flan-t5-small).
---extra-index-url https://download.pytorch.org/whl/cpu
-torch>=2.3,<3
-transformers>=4.44,<5
-datasets>=2.20
-sentencepiece>=0.2
-accelerate>=0.33
-fastapi>=0.115
-uvicorn[standard]>=0.30

@@ -7,10 +7,9 @@ import express, { type Request, type Response } from 'express';
 import type { CanvasNode } from '@/types';
 import { exportHtml, normalizeNode } from '@/utils';
 
-import { generate, modelStatus, refine } from './ai.ts';
+import { generate, modelStatus, refine, subjects } from './ai.ts';
 import { generations, templates } from './db.ts';
-import { generateDsl, withHistory } from './generator.ts';
-import { suggestSubjects } from './subjects.ts';
+import { generateDsl } from './generator.ts';
 import { seedStarters } from './seed.ts';
 import { removeScreenshot, saveScreenshot, screenshotFile } from './screenshot.ts';
 import { dslToTree, parseDsl } from './dsl.ts';
@@ -44,9 +43,8 @@ export const createApp = () => {
         const model = await modelStatus();
         res.json({
             ok: true,
-            engine: model.ok ? 'model' : 'rules',
+            engine: model.ok ? 'gemini' : 'rules',
             model: model.name,
-            aiUrl: process.env.AI_URL ? 'configured' : 'not set',
         });
     });
 
@@ -96,10 +94,9 @@ export const createApp = () => {
     });
 
     /** Subject line and preheader ideas for a brief. */
-    app.post('/api/ai/subjects', validate(subjectsBody), (req, res) => {
+    app.post('/api/ai/subjects', validate(subjectsBody), async (req, res) => {
         const { prompt, options, history } = req.body as GenerateBody;
-        const brief = history.length > 0 ? `${history.join('. ')}. ${prompt}` : prompt;
-        res.json(suggestSubjects(brief, withHistory(prompt, options, history)));
+        res.json(await subjects(prompt, options, history));
     });
 
     /** Re-expand edited DSL without calling the model. */
@@ -127,7 +124,7 @@ export const createApp = () => {
         res.json({ ...row, html: exportHtml(row.root) });
     });
 
-    /** Rules engine preview, handy for building datasets from the UI. */
+    /** Rules engine preview without Gemini. */
     app.post('/api/ai/rules', validate(generateBody), (req, res) => {
         const { prompt, options } = req.body as GenerateBody;
         res.json({ dsl: generateDsl(prompt, options) });
@@ -213,15 +210,6 @@ export const createApp = () => {
         res.json({ ok: templates.remove(paramId(req)) });
     });
 
-    /* ---------- dataset ---------- */
-    app.get('/api/dataset/approved.jsonl', (_req, res) => {
-        res.type('application/x-ndjson').send(
-            generations
-                .approved()
-                .map((row) => JSON.stringify({ prompt: row.prompt, dsl: row.dsl }))
-                .join('\n'),
-        );
-    });
 
     /* ---------- static web build (single-process VPS deploy) ---------- */
     const webDist = path.resolve(process.env.WEB_DIST ?? '../web/dist');

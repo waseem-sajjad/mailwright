@@ -1,19 +1,20 @@
 /**
- * AI engines. The server asks the fine-tuned model service first (when
- * AI_URL is set and healthy) and falls back to the rules engine, so the UI
- * works before any model has been trained.
+ * AI engines. With GEMINI_API_KEY set the server asks Gemini (via
+ * @google/genai) and falls back to the rules engine on any failure, so the UI
+ * works without a key as well.
  */
-import axios from 'axios';
+import { GoogleGenAI, Type } from '@google/genai';
 
 import type { CanvasNode } from '@/types';
 import { normalizeNode } from '@/utils';
 
 import { dslToTree, parseDsl } from './dsl.ts';
 import { generateDsl, type GenerateOptions, withHistory } from './generator.ts';
-import { repairDsl } from './prompts.ts';
+import { cleanDsl, generatePrompt, refinePrompt, subjectsPrompt, SYSTEM_INSTRUCTION } from './prompts.ts';
 import { refineDsl } from './refine.ts';
+import { suggestSubjects } from './subjects.ts';
 
-export type Engine = 'model' | 'rules';
+export type Engine = 'gemini' | 'rules';
 
 export interface GenerationResult {
     dsl: string;
@@ -22,61 +23,44 @@ export interface GenerationResult {
     model: string | null;
 }
 
-/** The Python service (ai/serve.py) defaults to port 8000; AI_URL overrides it. */
-export const AI_URL = (process.env.AI_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
+export const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'models/gemini-3.8-flash';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? '';
 const AI_TIMEOUT = Number(process.env.AI_TIMEOUT_MS ?? 60000);
 
-/** Client for the Python model service (ai/serve.py). */
-const modelClient = axios.create({
-    baseURL: AI_URL,
-    timeout: AI_TIMEOUT,
-    headers: { 'content-type': 'application/json' },
-});
+const client = GEMINI_API_KEY
+    ? new GoogleGenAI({ apiKey: GEMINI_API_KEY, httpOptions: { timeout: AI_TIMEOUT } })
+    : null;
 
-let modelInfo: { name: string | null; checkedAt: number; ok: boolean } | null = null;
+/** Whether Gemini is configured; the UI shows this in the chat header. */
+export const modelStatus = async (): Promise<{ ok: boolean; name: string | null }> =>
+    client ? { ok: true, name: GEMINI_MODEL } : { ok: false, name: null };
 
-/** Cached health probe of the Python model service. */
-export const modelStatus = async (): Promise<{ ok: boolean; name: string | null }> => {
-    if (process.env.AI_URL === 'off') return { ok: false, name: null };
-    if (modelInfo && Date.now() - modelInfo.checkedAt < 30000) {
-        return { ok: modelInfo.ok, name: modelInfo.name };
-    }
-    try {
-        const { data } = await modelClient.get<{ model?: string }>('/health', {
-            timeout: 3000,
-        });
-        modelInfo = { name: data.model ?? 'model', checkedAt: Date.now(), ok: true };
-    } catch {
-        modelInfo = { name: null, checkedAt: Date.now(), ok: false };
-    }
-    return { ok: modelInfo.ok, name: modelInfo.name };
+const warn = (message: string): void => {
+    // eslint-disable-next-line no-console
+    console.warn(`gemini: ${message}; using the rules engine`);
 };
 
-const askModel = async (
-    prompt: string,
-    options: GenerateOptions,
-    refine?: { dsl: string; instruction: string },
-): Promise<string | null> => {
-    const status = await modelStatus();
-    if (!status.ok) return null;
+const askGemini = async (contents: string, temperature: number): Promise<string | null> => {
+    if (!client) return null;
     try {
-        const { data } = await modelClient.post<{ dsl?: string }>('/generate', {
-            prompt,
-            options,
-            mode: refine ? 'refine' : 'generate',
-            current: refine?.dsl,
-            instruction: refine?.instruction,
+        const response = await client.models.generateContent({
+            model: GEMINI_MODEL,
+            contents,
+            config: {
+                systemInstruction: SYSTEM_INSTRUCTION,
+                temperature,
+                maxOutputTokens: 4096,
+            },
         });
-        const dsl = data.dsl ? repairDsl(data.dsl) : '';
-        return dsl || null;
+        const text = response.text?.trim();
+        return text ? cleanDsl(text) : null;
     } catch (error) {
-        if (axios.isAxiosError(error)) {
-            // eslint-disable-next-line no-console
-            console.warn(`model service failed: ${error.message}; using rules engine`);
-        }
+        warn(error instanceof Error ? error.message : String(error));
         return null;
     }
 };
+
+const toRoot = (dsl: string): CanvasNode => normalizeNode(dslToTree(parseDsl(dsl))) as CanvasNode;
 
 /** A model answer must at least parse into one row to be trusted. */
 const usable = (dsl: string): boolean => parseDsl(dsl).rows.length > 0;
@@ -91,23 +75,13 @@ export const generate = async (
     history: string[] = [],
 ): Promise<GenerationResult> => {
     const effective = withHistory(prompt, options, history);
-    const fromModel = await askModel(prompt, effective);
+    const fromModel = await askGemini(generatePrompt(prompt, effective, history), 0.9);
     if (fromModel && usable(fromModel)) {
-        const status = await modelStatus();
-        return {
-            dsl: fromModel,
-            root: normalizeNode(dslToTree(parseDsl(fromModel))) as CanvasNode,
-            engine: 'model',
-            model: status.name,
-        };
+        return { dsl: fromModel, root: toRoot(fromModel), engine: 'gemini', model: GEMINI_MODEL };
     }
+    if (fromModel) warn('answer did not parse as DSL');
     const dsl = generateDsl(prompt, effective);
-    return {
-        dsl,
-        root: normalizeNode(dslToTree(parseDsl(dsl))) as CanvasNode,
-        engine: 'rules',
-        model: null,
-    };
+    return { dsl, root: toRoot(dsl), engine: 'rules', model: null };
 };
 
 export interface RefineOutcome extends GenerationResult {
@@ -123,23 +97,70 @@ export const refine = async (
     history: string[] = [],
 ): Promise<RefineOutcome> => {
     const effective = withHistory(instruction, options, [prompt, ...history]);
-    const fromModel = await askModel(prompt, effective, { dsl, instruction });
+    const fromModel = await askGemini(refinePrompt(prompt, dsl, instruction, history), 0.4);
     if (fromModel && usable(fromModel) && fromModel !== dsl) {
-        const status = await modelStatus();
         return {
             dsl: fromModel,
-            root: normalizeNode(dslToTree(parseDsl(fromModel))) as CanvasNode,
-            engine: 'model',
-            model: status.name,
-            applied: ['Updated by the fine-tuned model'],
+            root: toRoot(fromModel),
+            engine: 'gemini',
+            model: GEMINI_MODEL,
+            applied: [`Applied “${instruction}”`],
         };
     }
     const result = refineDsl(dsl, instruction, { prompt, options: effective });
     return {
         dsl: result.dsl,
-        root: normalizeNode(dslToTree(parseDsl(result.dsl))) as CanvasNode,
+        root: toRoot(result.dsl),
         engine: 'rules',
         model: null,
         applied: result.applied,
     };
+};
+
+export interface SubjectIdeas {
+    subjects: string[];
+    preheaders: string[];
+    type: string;
+    engine: Engine;
+}
+
+/** Subject line and preheader ideas; Gemini answers as JSON, rules otherwise. */
+export const subjects = async (
+    prompt: string,
+    options: GenerateOptions = {},
+    history: string[] = [],
+): Promise<SubjectIdeas> => {
+    const effective = withHistory(prompt, options, history);
+    const brief = history.length > 0 ? `${history.join('. ')}. ${prompt}` : prompt;
+    const fallback = { ...suggestSubjects(brief, effective), engine: 'rules' as const };
+    if (!client) return fallback;
+    try {
+        const response = await client.models.generateContent({
+            model: GEMINI_MODEL,
+            contents: subjectsPrompt(prompt, effective, history),
+            config: {
+                systemInstruction:
+                    'You write concise, specific email subject lines and preheaders. Answer with JSON only.',
+                temperature: 0.9,
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        subjects: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        preheaders: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    },
+                    required: ['subjects', 'preheaders'],
+                },
+            },
+        });
+        const parsed = JSON.parse(response.text ?? '{}') as Partial<SubjectIdeas>;
+        const lines = (value: unknown): string[] =>
+            Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string' && v.trim() !== '') : [];
+        const ideas = { subjects: lines(parsed.subjects), preheaders: lines(parsed.preheaders) };
+        if (ideas.subjects.length === 0) return fallback;
+        return { ...ideas, type: fallback.type, engine: 'gemini' };
+    } catch (error) {
+        warn(error instanceof Error ? error.message : String(error));
+        return fallback;
+    }
 };
