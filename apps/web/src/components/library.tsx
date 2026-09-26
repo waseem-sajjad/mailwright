@@ -176,7 +176,7 @@ export const LibraryDialog: React.FC = () => {
         if (open) refresh();
     }, [open]);
 
-    // Debounced server-side search: pgvector when the server has Gemini.
+    // Debounced server-side keyword search (name, prompt, DSL).
     useEffect(() => {
         const q = query.trim();
         if (!q) {

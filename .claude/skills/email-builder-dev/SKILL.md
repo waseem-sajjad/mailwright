@@ -154,7 +154,7 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
 Full detail lives in the `nestjs-server` skill and `apps/server/CLAUDE.md`.
 What the web side must know:
 
-- NestJS + Prisma on PostgreSQL/pgvector. Routes: `/api/health`,
+- NestJS + Prisma on PostgreSQL. Routes: `/api/health`,
   `/api/ai/{generate,refine,subjects,expand,rules,feedback,history}`,
   `/api/templates` (`?q=` semantic search, `?kind=`), `/:id`, `/:id/similar`,
   `/:id/screenshot`, `/:id/html`, `/:id/duplicate`. Errors are `{ error }`.
