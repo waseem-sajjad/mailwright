@@ -68,7 +68,7 @@ A [Gemini API key](https://aistudio.google.com/apikey) is optional but is what
 turns the assistant into a real designer.
 
 ```bash
-git clone https://github.com/waseemsajjad/mailwright.git
+git clone https://github.com/waseem-sajjad/mailwright.git
 cd mailwright
 pnpm install
 
