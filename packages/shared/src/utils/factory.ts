@@ -31,7 +31,7 @@ import type {
     TableProperties,
     TextProperties,
     VideoProperties,
-} from '@/types';
+} from '../types';
 
 import { rgb, uniformPadding } from './helper';
 import { newId } from './tree';

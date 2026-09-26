@@ -1,6 +1,6 @@
-import type { MergeTag } from '@/types';
+import { MERGE_TAG_RE, mergeTagChip, ZWSP } from '@email-builder/shared/utils';
 
-import { MERGE_TAG_RE, mergeTagChip, ZWSP } from './mergeTags';
+import type { MergeTag } from '@/types';
 
 const chipElement = (tag: string, tags: MergeTag[]): HTMLElement => {
     const holder = document.createElement('div');

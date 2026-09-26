@@ -1,4 +1,4 @@
-import type { MergeTag } from '@/types';
+import type { MergeTag } from '../types';
 
 import { escapeHtml } from './helper';
 

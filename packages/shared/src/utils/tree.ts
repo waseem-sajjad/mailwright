@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 
-import type { EmailNode } from '@/types';
+import type { EmailNode } from '../types';
 
 export const newId = (): string => nanoid(8);
 

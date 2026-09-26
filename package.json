@@ -1,16 +1,15 @@
 {
   "name": "email-template-builder",
   "version": "1.0.0",
-  "description": "Drag-and-drop email template builder with an AI generation server.",
-  "main": "index.js",
+  "private": true,
+  "description": "Drag-and-drop email template builder (React) with a NestJS + Prisma + pgvector API for AI generation and a template library.",
+  "type": "module",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @email-builder/shared lint && pnpm --filter web build && pnpm --filter server build",
     "lint": "pnpm -r lint",
-    "start": "pnpm --filter server start"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module"
+    "start": "pnpm --filter server start",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down"
+  }
 }

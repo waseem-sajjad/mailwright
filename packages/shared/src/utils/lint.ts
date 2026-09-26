@@ -1,4 +1,4 @@
-import type { CanvasNode, EmailNode } from '@/types';
+import type { CanvasNode, EmailNode } from '../types';
 
 import { MERGE_TAG_RE } from './mergeTags';
 

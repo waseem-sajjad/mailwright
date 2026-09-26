@@ -1,3 +1,1 @@
-export * from './properties';
-export * from './components';
-export * from './common';
+export * from '@email-builder/shared/types';

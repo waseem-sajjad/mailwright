@@ -1,6 +1,11 @@
-import type { RGBColor } from 'react-color';
 
-export type { RGBColor };
+/** Same shape as react-color's RGBColor, defined here so the package has no UI dependency. */
+export interface RGBColor {
+    r: number;
+    g: number;
+    b: number;
+    a?: number;
+}
 
 export type ComponentType =
     | 'Canvas'

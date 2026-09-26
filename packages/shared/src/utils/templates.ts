@@ -1,4 +1,4 @@
-import type { CanvasNode, EmailNode } from '@/types';
+import type { CanvasNode, EmailNode } from '../types';
 
 import { createCanvas, createContent, createRow } from './factory';
 import { rgb, uniformPadding } from './helper';

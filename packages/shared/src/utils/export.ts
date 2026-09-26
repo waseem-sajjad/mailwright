@@ -24,7 +24,7 @@ import type {
     TextProperties,
     VideoProperties,
     Visibility,
-} from '@/types';
+} from '../types';
 
 import {
     borderCss,

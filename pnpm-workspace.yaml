@@ -3,9 +3,14 @@ packages:
   - "packages/*"
 allowBuilds:
   '@google/genai': false
+  '@parcel/watcher': false
+  '@prisma/engines': true
   '@swc/core': true
   esbuild: true
+  prisma: true
   protobufjs: false
+  unrs-resolver: false
+  workerd: false
 # Hoist type packages so declaration files inside the pnpm store can see them.
 publicHoistPattern:
   - '@types/*'

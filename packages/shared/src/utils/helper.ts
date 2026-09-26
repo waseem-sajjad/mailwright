@@ -1,4 +1,4 @@
-import type { Align, Border, Padding, RGBColor } from '@/types';
+import type { Align, Border, Padding, RGBColor } from '../types';
 
 export const contentAlign = (align: Align): string => {
     if (align === 'left') return '0';

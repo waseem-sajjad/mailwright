@@ -1,6 +1,6 @@
-import type { CanvasNode, EmailDocument } from '@/types';
+import { normalizeNode } from '@email-builder/shared/utils';
 
-import { normalizeNode } from './factory';
+import type { CanvasNode, EmailDocument } from '@/types';
 
 export const STORAGE_KEY = 'email-template-builder:document';
 
