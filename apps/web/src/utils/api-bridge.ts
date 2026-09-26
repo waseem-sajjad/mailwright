@@ -14,4 +14,4 @@ export {
     type Health,
 } from './api';
 export { copyToClipboard } from './storage';
-export { exportHtml } from '@email-builder/shared/utils';
+export { exportHtml } from '@mailwright/shared/utils';

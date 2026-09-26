@@ -35,7 +35,7 @@ $ESB script.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=o
   (`packages/shared/src/types/common.ts`). No classes, no parent pointers.
   Always create new objects; never mutate a node in place.
 - Types, factories, tree ops, the exporter, starters, merge-tag helpers and
-  pre-flight checks live in the workspace package `@email-builder/shared`
+  pre-flight checks live in the workspace package `@mailwright/shared`
   (`packages/shared/src`). The web app re-exports them from `@/types` and
   `@/utils`, so component code imports those as before; DOM-bound helpers
   (`cn`, `storage`, `selection`, `mergeTagDom`, `api`, `screenshot`) stay in
@@ -162,7 +162,7 @@ What the web side must know:
   `company`; bodies also take `history` (earlier chat prompts). Responses carry
   `engine` (`gemini` | `rules`), `dsl`, `root`, `html`, `summary` (the designer's
   note, shown as the chat reply), `references` (library templates shown to Gemini).
-- Shared code is the `@email-builder/shared` package; keep DOM/Vite modules
+- Shared code is the `@mailwright/shared` package; keep DOM/Vite modules
   (api.ts, screenshot.ts, storage, selection) in `apps/web/src/utils` only.
 - Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
   (`components/chat.tsx`, state in `hooks/useChat.ts`). The site is public:

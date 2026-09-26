@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
-import type { CanvasNode } from '@email-builder/shared/types';
-import { exportHtml } from '@email-builder/shared/utils';
+import type { CanvasNode } from '@mailwright/shared/types';
+import { exportHtml } from '@mailwright/shared/utils';
 
 import { AiService, type Engine, type Reference, type SubjectIdeas } from '../ai/ai.service';
 import type { GenerateOptions } from '../ai/engine/generator';

@@ -10,7 +10,7 @@ generation history.
 
 - `pnpm dev` – `prisma migrate deploy` then `nest start --watch` on http://localhost:8787
 - `pnpm build` – `prisma generate` + `nest build` (webpack bundle → `dist/main.js`; the
-  bundle includes `@email-builder/shared`, other node_modules stay external)
+  bundle includes `@mailwright/shared`, other node_modules stay external)
 - `pnpm start` – migrate, then run the bundle (serves `../web/dist` when present)
 - `pnpm build:gallery` – regenerate `src/templates/gallery.json` with Gemini (`--only <name>` for a subset)
 - `pnpm lint` – `tsc --noEmit` + eslint; `pnpm db:migrate:dev` for new migrations
@@ -62,7 +62,7 @@ generation history.
   Gemini). `pnpm build:gallery` (`src/scripts/build-gallery.ts`, needs a Gemini key)
   regenerates that JSON from curated briefs; commit the result. `list({ q })` is stemmed
   keyword search; `examplesFor()` picks Gemini's references the same way.
-- Shared code comes from the workspace package `@email-builder/shared` (`/types`,
+- Shared code comes from the workspace package `@mailwright/shared` (`/types`,
   `/utils`); `webpack.config.js` allowlists it so its TypeScript source is bundled.
 
 ## Conventions

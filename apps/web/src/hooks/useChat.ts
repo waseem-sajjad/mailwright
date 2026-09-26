@@ -37,7 +37,7 @@ interface ChatState {
     setOptions: (options: Partial<AiOptions>) => void;
 }
 
-const STORAGE_KEY = 'email-template-builder:chat:v2';
+const STORAGE_KEY = 'mailwright:chat:v2';
 const DEFAULT_OPTIONS: AiOptions = {
     type: 'auto',
     tone: 'auto',

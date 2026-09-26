@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from '@nestjs/common';
 
-import type { CanvasNode } from '@email-builder/shared/types';
-import { normalizeNode, templates as starters } from '@email-builder/shared/utils';
+import type { CanvasNode } from '@mailwright/shared/types';
+import { normalizeNode, templates as starters } from '@mailwright/shared/utils';
 
 import { dslToTree, parseDsl } from '../ai/engine/dsl';
 import { generateDsl } from '../ai/engine/generator';

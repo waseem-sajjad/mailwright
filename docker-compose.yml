@@ -1,3 +1,5 @@
+name: mailwright
+
 services:
   postgres:
     image: pgvector/pgvector:pg18-trixie

@@ -1,4 +1,4 @@
-# Email Template Builder (workspace)
+# Mailwright (workspace)
 
 pnpm workspace with two apps and one shared package:
 
@@ -6,7 +6,7 @@ pnpm workspace with two apps and one shared package:
 - `apps/server` – NestJS + Prisma on PostgreSQL: AI template generation and
   chat (Gemini via `@google/genai`, rules-engine fallback), template library
   with screenshots. See `apps/server/CLAUDE.md`.
-- `packages/shared` (`@email-builder/shared`) – the DOM-free document model,
+- `packages/shared` (`@mailwright/shared`) – the DOM-free document model,
   factories, tree ops, HTML exporter and starters both apps import. See
   `packages/shared/CLAUDE.md`.
 

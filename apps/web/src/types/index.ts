@@ -1,1 +1,1 @@
-export * from '@email-builder/shared/types';
+export * from '@mailwright/shared/types';

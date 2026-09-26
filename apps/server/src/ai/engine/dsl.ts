@@ -12,8 +12,8 @@
  *   row 1-2: image | heading "Story"; text "Teaser"; button "Read more"
  *   row light: social; footer "ACME Inc" "123 Example St, Sydney"
  */
-import type { CanvasNode, ColumnLayout, EmailNode, RGBColor } from '@email-builder/shared/types';
-import { createCanvas, createContent, createRow, iconItem, newId, rgb } from '@email-builder/shared/utils';
+import type { CanvasNode, ColumnLayout, EmailNode, RGBColor } from '@mailwright/shared/types';
+import { createCanvas, createContent, createRow, iconItem, newId, rgb } from '@mailwright/shared/utils';
 
 export interface DslBlock {
     kind: string;

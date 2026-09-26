@@ -1,8 +1,8 @@
-import { normalizeNode } from '@email-builder/shared/utils';
+import { normalizeNode } from '@mailwright/shared/utils';
 
 import type { CanvasNode, EmailDocument } from '@/types';
 
-export const STORAGE_KEY = 'email-template-builder:document';
+export const STORAGE_KEY = 'mailwright:document';
 
 export const loadDocument = (): EmailDocument | null => {
     try {

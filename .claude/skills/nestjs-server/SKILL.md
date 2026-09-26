@@ -27,7 +27,7 @@ line (it kills the shell): kill by port with `fuser -k 8787/tcp`.
 
 - Scaffolded with `nest new` (CommonJS, eslint + prettier; jest removed).
   Builder is **webpack** (`nest-cli.json` → `webpack.config.js`) because the
-  server imports `@email-builder/shared`, a workspace package shipped as
+  server imports `@mailwright/shared`, a workspace package shipped as
   TypeScript source: the config allowlists it in `webpack-node-externals` so
   it is bundled while real node_modules stay external. Nest CLI 11 offers
   tsc | swc | webpack (rspack is v12). `tsconfig` uses `module: esnext`,

@@ -1,15 +1,20 @@
 {
-  "name": "email-template-builder",
+  "name": "mailwright",
   "version": "1.0.0",
   "private": true,
-  "description": "Drag-and-drop email template builder (React) with a NestJS + Prisma + pgvector API for AI generation and a template library.",
+  "description": "Mailwright: open-source drag-and-drop email template builder with an AI designer, a template gallery and inbox-safe HTML export.",
   "type": "module",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
-    "build": "pnpm --filter @email-builder/shared lint && pnpm --filter web build && pnpm --filter server build",
+    "build": "pnpm --filter @mailwright/shared lint && pnpm --filter @mailwright/web build && pnpm --filter @mailwright/server build",
     "lint": "pnpm -r lint",
-    "start": "pnpm --filter server start",
+    "start": "pnpm --filter @mailwright/server start",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waseemsajjad/mailwright"
   }
 }

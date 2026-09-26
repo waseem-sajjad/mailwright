@@ -1,7 +1,7 @@
 import { Controller, Get, Header, Inject, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
-import { exportHtml } from '@email-builder/shared/utils';
+import { exportHtml } from '@mailwright/shared/utils';
 
 import { idParam } from '../ai/schemas';
 import { ZodValidationPipe } from '../common/zod.pipe';

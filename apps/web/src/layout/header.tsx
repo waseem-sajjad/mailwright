@@ -284,6 +284,15 @@ export const Header: React.FC = () => {
     return (
         <header className="flex h-10 items-center justify-between border-b border-gray-300 bg-hover">
             <section className="flex h-full flex-1 items-center gap-1 px-2">
+                <a
+                    className="mr-1 flex items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight text-gray-800 hover:bg-gray-100"
+                    href="/"
+                    title="Mailwright"
+                >
+                    <img className="size-5" src="/logo.svg" alt="" />
+                    <span className="hidden md:inline">Mailwright</span>
+                </a>
+                <span className="mx-1 hidden h-5 w-px bg-gray-300 md:inline" />
                 <input
                     className="w-56 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-gray-800 outline-none hover:border-gray-300 focus:border-blue-400 focus:bg-white"
                     onChange={(e) => setName(e.target.value)}

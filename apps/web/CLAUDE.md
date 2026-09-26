@@ -36,7 +36,7 @@ Vite + React 19 + TypeScript + Zustand + dnd-kit + Tailwind 4. Package manager i
 
 ## Shared package
 
-`@/types` and `@/utils` re-export `@email-builder/shared` (`packages/shared`):
+`@/types` and `@/utils` re-export `@mailwright/shared` (`packages/shared`):
 the document model, factories, tree ops, exporter, starters, merge-tag helpers
 and pre-flight checks now live there. Edit them in the package; DOM-bound
 helpers (`cn`, `storage`, `selection`, `mergeTagDom`, `api`, `screenshot`)

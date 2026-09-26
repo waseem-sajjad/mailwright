@@ -1,10 +1,10 @@
 {
-  "name": "server",
+  "name": "@mailwright/server",
   "version": "0.0.1",
-  "description": "NestJS API for the email template builder: Gemini template generation, pgvector search, template library on PostgreSQL via Prisma.",
+  "description": "Mailwright API: NestJS + Prisma on PostgreSQL, Gemini-powered template design and chat, template gallery.",
   "author": "",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "prisma generate && nest build",
     "dev": "prisma migrate deploy && nest start --watch",
@@ -22,8 +22,8 @@
     "build:gallery": "tsx src/scripts/build-gallery.ts"
   },
   "dependencies": {
-    "@email-builder/shared": "workspace:*",
     "@google/genai": "^2.24.0",
+    "@mailwright/shared": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",

@@ -1,4 +1,4 @@
-import { MERGE_TAG_RE, mergeTagChip, ZWSP } from '@email-builder/shared/utils';
+import { MERGE_TAG_RE, mergeTagChip, ZWSP } from '@mailwright/shared/utils';
 
 import type { MergeTag } from '@/types';
 

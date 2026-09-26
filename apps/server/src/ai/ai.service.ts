@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import type { CanvasNode } from '@email-builder/shared/types';
-import { exportHtml, normalizeNode } from '@email-builder/shared/utils';
+import type { CanvasNode } from '@mailwright/shared/types';
+import { exportHtml, normalizeNode } from '@mailwright/shared/utils';
 
 import { newId } from '../common/ids';
 import { Prisma } from '../generated/prisma/client';

@@ -10,12 +10,12 @@ importers:
 
   apps/server:
     dependencies:
-      '@email-builder/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@google/genai':
         specifier: ^2.24.0
         version: 2.24.0
+      '@mailwright/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.2.6(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -131,7 +131,7 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.1.0)
-      '@email-builder/shared':
+      '@mailwright/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@radix-ui/react-accordion':
