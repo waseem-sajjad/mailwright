@@ -1,5 +1,4 @@
 import {
-    BookMarked,
     Bot,
     Check,
     Code2,
@@ -26,7 +25,6 @@ import {
     exportHtml,
     getCloudTemplate,
     type Health,
-    saveCloudTemplate,
     screenshotUrl,
     templateHtmlUrl,
 } from '@/utils/api-bridge';
@@ -174,26 +172,8 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
     const rate = useChat((s) => s.rate);
     const [copied, setCopied] = useState<string | null>(null);
     const [showDsl, setShowDsl] = useState(false);
-    const [saved, setSaved] = useState<string | null>(null);
     const mine = message.role === 'user';
     const g = message.generation;
-    const context = useChat((s) => s.context);
-
-    const saveToLibrary = async () => {
-        if (!g || saved) return;
-        try {
-            const row = await saveCloudTemplate({
-                name: g.name,
-                root: g.root,
-                prompt: context?.prompt ?? message.text,
-                dsl: g.dsl,
-            });
-            setSaved(row.id);
-            notify(`Saved “${row.name}” to the library`);
-        } catch {
-            notify('Could not save to the library', 'info');
-        }
-    };
 
     const openTemplate = async (t: CloudTemplate) => {
         if (
@@ -334,15 +314,6 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                             size="sm"
                         >
                             Add rows below
-                        </Button>
-                        <Button
-                            onClick={saveToLibrary}
-                            title="Store this template (with its DSL) in the library"
-                            disabled={saved !== null}
-                            size="sm"
-                        >
-                            <BookMarked size={12} />{' '}
-                            {saved ? 'Saved' : 'Save to library'}
                         </Button>
                     </div>
                 </div>

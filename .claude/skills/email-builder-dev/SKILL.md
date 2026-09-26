@@ -173,9 +173,18 @@ What the web side must know:
   `send()` creates a conversation on demand, shows the user message
   optimistically, then swaps in the server's user + assistant messages and
   context; the server decides intent (search / subjects / refine / generate /
-  answer). Each generation card has a DSL toggle (`DslView`), a "Save to
-  library" button (sends the DSL) and shows its references; the context bar
+  answer). Each generation card has a DSL toggle (`DslView`) and shows its
+  references; the context bar
   shows the brief, applied changes, current DSL and a reset (server-side).
+- Ads: `components/ads.tsx` (`AdSlot`) renders Google AdSense units only
+  when `VITE_ADSENSE_CLIENT` and the slot id are set (see `.env.example`);
+  placements: bottom of the left sidebar (`editor.tsx`) and above the library
+  grid. `public/ads.txt` must carry the publisher line. Ad containers are
+  `data-editor-only` so screenshots skip them.
+- Template gallery (`components/library.tsx`) is read-only: keyword search,
+  open, download HTML. There is no save/rename/delete anywhere (public site);
+  `utils/screenshot.ts` and `html-to-image` are gone. Thumbnails are live
+  scaled iframes of `/api/templates/:id/html` unless a row has a screenshot.
 - Ads: `components/ads.tsx` (`AdSlot`) renders Google AdSense units only
   when `VITE_ADSENSE_CLIENT` and the slot id are set (see `.env.example`);
   placements: bottom of the left sidebar (`editor.tsx`) and above the library

@@ -44,6 +44,6 @@ stay here.
 
 ## Public site
 
-One private AI conversation per browser (no history list), no vendor or model
-names in the UI, Google AdSense slots via `components/ads.tsx` when
+One private AI conversation per browser (no history list), a read-only
+template gallery (no saving to the server), no vendor or model names in the UI, Google AdSense slots via `components/ads.tsx` when
 `VITE_ADSENSE_CLIENT` is set (`.env.example`, `public/ads.txt`).

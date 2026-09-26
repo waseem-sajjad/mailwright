@@ -12,6 +12,7 @@ generation history.
 - `pnpm build` – `prisma generate` + `nest build` (webpack bundle → `dist/main.js`; the
   bundle includes `@email-builder/shared`, other node_modules stay external)
 - `pnpm start` – migrate, then run the bundle (serves `../web/dist` when present)
+- `pnpm build:gallery` – regenerate `src/templates/gallery.json` with Gemini (`--only <name>` for a subset)
 - `pnpm lint` – `tsc --noEmit` + eslint; `pnpm db:migrate:dev` for new migrations
   (destructive ones need a hand-written SQL file + `pnpm db:migrate`), `pnpm db:studio`
 - Infra: `docker compose up -d postgres` (repo root)
@@ -55,9 +56,12 @@ generation history.
   public and a conversation is private to the browser that holds its id.
 - `ai/schemas.ts`, `templates/schemas.ts`, `chat/schemas.ts` – zod bodies; bound per route
   with `ZodValidationPipe` (`common/zod.pipe.ts`). Errors leave as `{ error, issues? }`.
-- `templates/templates.service.ts` – CRUD, screenshots as `Bytes`, `list({ q })` (stemmed
-  keyword search over name, prompt and DSL), `examplesFor()` and seeding (web starters +
-  three large rules-engine templates with DSL).
+- `templates/` – read-only gallery (`GET` routes only: the site is public). The service
+  seeds idempotently by name from three sources: the web starters, three large
+  rules-engine templates, and `gallery.json` (20 professional templates written by
+  Gemini). `pnpm build:gallery` (`src/scripts/build-gallery.ts`, needs a Gemini key)
+  regenerates that JSON from curated briefs; commit the result. `list({ q })` is stemmed
+  keyword search; `examplesFor()` picks Gemini's references the same way.
 - Shared code comes from the workspace package `@email-builder/shared` (`/types`,
   `/utils`); `webpack.config.js` allowlists it so its TypeScript source is bundled.
 

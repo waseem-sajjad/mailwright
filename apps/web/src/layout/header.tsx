@@ -1,5 +1,4 @@
 import {
-    BookmarkPlus,
     ChevronDown,
     Code2,
     Copy,
@@ -34,8 +33,6 @@ import {
     readFileAsText,
     slugify,
 } from '@/utils';
-import { errorMessage, saveCloudTemplate } from '@/utils/api';
-import { captureCanvas } from '@/utils/screenshot';
 
 const ViewButton: React.FC<{
     mode: ViewMode;
@@ -100,7 +97,7 @@ const History: React.FC = () => {
     );
 };
 
-/** File menu: templates, library, import/export JSON, new. */
+/** File menu: templates, import/export JSON, new. */
 const FileMenu: React.FC = () => {
     const { name, root, load, reset } = useEmail();
     const { setDialog, notify } = useSettings();
@@ -151,30 +148,6 @@ const FileMenu: React.FC = () => {
                     icon={<LayoutTemplate size={14} />}
                 >
                     Templates…
-                </Menu.Item>
-                <Menu.Item
-                    onSelect={async () => {
-                        // eslint-disable-next-line no-alert
-                        const title = window.prompt('Save to library as', name);
-                        if (title === null) return;
-                        try {
-                            const screenshot =
-                                (await captureCanvas()) ?? undefined;
-                            await saveCloudTemplate({
-                                name: title,
-                                root,
-                                screenshot,
-                            });
-                            notify(
-                                `Saved “${title || 'Untitled'}” to the library`,
-                            );
-                        } catch (error) {
-                            notify(errorMessage(error), 'info');
-                        }
-                    }}
-                    icon={<BookmarkPlus size={14} />}
-                >
-                    Save to library
                 </Menu.Item>
                 <Menu.Separator />
                 <Menu.Label>JSON</Menu.Label>

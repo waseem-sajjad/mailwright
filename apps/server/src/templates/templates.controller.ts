@@ -1,22 +1,16 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Inject, Param, Post, Put, Query, Res } from '@nestjs/common';
+import { Controller, Get, Header, Inject, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
 import { exportHtml } from '@email-builder/shared/utils';
 
 import { idParam } from '../ai/schemas';
 import { ZodValidationPipe } from '../common/zod.pipe';
-import {
-    type ListQuery,
-    type TemplateCreateBody,
-    type TemplateUpdateBody,
-    listQuery,
-    templateCreateBody,
-    templateUpdateBody,
-} from './schemas';
+import { type ListQuery, listQuery } from './schemas';
 import { TemplatesService } from './templates.service';
 
 const id = () => new ZodValidationPipe(idParam);
 
+/** Read-only gallery: the site is public, so nothing here writes. Templates come from the seed (see gallery.json). */
 @Controller('api/templates')
 export class TemplatesController {
     constructor(@Inject(TemplatesService) private readonly templates: TemplatesService) {}
@@ -43,29 +37,5 @@ export class TemplatesController {
     async html(@Param('id', id()) templateId: string, @Res() res: Response) {
         const row = await this.templates.get(templateId);
         res.type('html').send(exportHtml(row.root));
-    }
-
-    @Post()
-    create(@Body(new ZodValidationPipe(templateCreateBody)) body: TemplateCreateBody) {
-        return this.templates.create(body);
-    }
-
-    @Put(':id')
-    update(
-        @Param('id', id()) templateId: string,
-        @Body(new ZodValidationPipe(templateUpdateBody)) body: TemplateUpdateBody,
-    ) {
-        return this.templates.update(templateId, body);
-    }
-
-    @Post(':id/duplicate')
-    duplicate(@Param('id', id()) templateId: string) {
-        return this.templates.duplicate(templateId);
-    }
-
-    @Delete(':id')
-    @HttpCode(200)
-    async remove(@Param('id', id()) templateId: string) {
-        return { ok: await this.templates.remove(templateId) };
     }
 }

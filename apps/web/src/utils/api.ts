@@ -135,30 +135,6 @@ export const getCloudTemplate = async (
 ): Promise<CloudTemplate & { root: CanvasNode }> =>
     (await api.get(`/api/templates/${id}`)).data;
 
-export const saveCloudTemplate = async (input: {
-    name: string;
-    root: CanvasNode;
-    prompt?: string;
-    dsl?: string;
-    screenshot?: string;
-}): Promise<CloudTemplate> =>
-    (await api.post<CloudTemplate>('/api/templates', input)).data;
-
-export const updateCloudTemplate = async (
-    id: string,
-    input: { name?: string; root?: CanvasNode; screenshot?: string | null },
-): Promise<CloudTemplate> =>
-    (await api.put<CloudTemplate>(`/api/templates/${id}`, input)).data;
-
-export const duplicateCloudTemplate = async (
-    id: string,
-): Promise<CloudTemplate> =>
-    (await api.post<CloudTemplate>(`/api/templates/${id}/duplicate`)).data;
-
-export const deleteCloudTemplate = async (id: string): Promise<void> => {
-    await api.delete(`/api/templates/${id}`);
-};
-
 export const templateHtmlUrl = (template: CloudTemplate): string =>
     `${api.defaults.baseURL ?? ''}/api/templates/${template.id}/html?v=${encodeURIComponent(template.updatedAt)}`;
 

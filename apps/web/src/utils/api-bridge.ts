@@ -7,7 +7,6 @@ export {
     aiHealth,
     getCloudTemplate,
     listCloudTemplates,
-    saveCloudTemplate,
     screenshotUrl,
     templateHtmlUrl,
     type ChatMessage,

@@ -221,13 +221,34 @@ export const answerPrompt = (
 export const TITLE_INSTRUCTION =
     'Give this email brief a short, specific conversation title of at most six words, in title case, no quotes, no trailing punctuation. Answer with the title only.';
 
-/** Strips markdown fences or a leading language tag the model may add. */
-export const cleanDsl = (text: string): string =>
-    text
+/** Merge tags that are unambiguous even without braces. */
+const BARE_TAGS = ['first_name', 'last_name', 'unsubscribe_url'];
+const bareTag = new RegExp(`(?<![\\w{\\[])(${BARE_TAGS.join('|')})(?![\\w}\\]])`, 'g');
+
+/**
+ * Normalises a model answer into parseable DSL: strips fences, turns escaped
+ * "\n" sequences into real line breaks, and when the text still arrives as a
+ * single line re-inserts breaks before the header keys and row headers
+ * (outside quoted copy) and restores braces around bare merge tags.
+ */
+export const cleanDsl = (text: string): string => {
+    let out = text
         .replace(/^\s*```[a-z]*\s*/i, '')
         .replace(/\s*```\s*$/, '')
         .replace(/^\s*dsl\s*\n/i, '')
+        .trim();
+    if (!out.includes('\n')) out = out.replace(/\\(?:r\\)?n/g, '\n');
+    if (!out.includes('\n')) {
+        const outsideQuotes = (offset: number): boolean => (out.slice(0, offset).match(/"/g)?.length ?? 0) % 2 === 0;
+        out = out.replace(
+            /\s+(?=(?:preheader|brand|bg|row(?:\s+(?:\d[\d-]*|light|dark|brand))*)\s*:)/gi,
+            (match, offset: number) => (outsideQuotes(offset) ? '\n' : match),
+        );
+    }
+    return out
+        .replace(bareTag, '{{$1}}')
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter(Boolean)
         .join('\n');
+};

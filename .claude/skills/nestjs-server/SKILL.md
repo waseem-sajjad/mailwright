@@ -69,7 +69,8 @@ line (it kills the shell): kill by port with `fuser -k 8787/tcp`.
 ## Public-site rules
 
 - Never add a route that lists other people's data (conversations, generation
-  history). Conversations are reachable only by id.
+  history). Conversations are reachable only by id. The template gallery is
+  read-only: no create/update/delete routes; content comes from the seed.
 - Never return vendor or model names to the client; `AiService.status()` is
   `{ ok, ai }`, generation payloads have no `model` field.
 - New model-calling routes get `@Throttle({ ai: { limit, ttl } })`; the global
@@ -97,6 +98,10 @@ bump `updatedAt`. `get()` expands messages by joining `generations`
 - **Column**: `schema.prisma` → migration → service mapping (`summary()` /
   `fromRaw()` in `templates.service.ts` both need the field).
 - **Shared model changes** (types, factory, export) go in `packages/shared`, not here.
+- **Gallery**: edit the briefs in `src/scripts/build-gallery.ts`, run
+  `pnpm build:gallery` (or `-- --only <name>`), commit `gallery.json`; the
+  seed adds new names on the next start (existing rows are never touched,
+  so rename or delete rows by hand to replace one).
 - **Search**: `searchText()` in `templates.service.ts` is stemmed keyword
   matching over name, prompt and DSL; `examplesFor()` picks Gemini's references
   the same way.
