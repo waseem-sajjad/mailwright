@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/web/public/logo.svg" width="72" alt="" />
+  <img src="apps/web/public/logo-wordmark.svg" width="300" alt="Mailwright" />
 </p>
 
 <h1 align="center">Mailwright</h1>
@@ -49,16 +49,16 @@ emails without writing table-based HTML by hand:
 
 ## Screenshots
 
-| Template gallery | AI email designer |
-| --- | --- |
+| Template gallery                                  | AI email designer                                     |
+| ------------------------------------------------- | ----------------------------------------------------- |
 | ![Template gallery](docs/screenshots/gallery.png) | ![AI designer chat](docs/screenshots/ai-designer.png) |
 
-| Draft applied to the editor | Preview |
-| --- | --- |
+| Draft applied to the editor                          | Preview                                         |
+| ---------------------------------------------------- | ----------------------------------------------- |
 | ![AI draft applied](docs/screenshots/ai-applied.png) | ![Preview dialog](docs/screenshots/preview.png) |
 
-| Mobile view | Export with pre-flight checks |
-| --- | --- |
+| Mobile view                                 | Export with pre-flight checks                 |
+| ------------------------------------------- | --------------------------------------------- |
 | ![Mobile view](docs/screenshots/mobile.png) | ![Export dialog](docs/screenshots/export.png) |
 
 ## Quick start
@@ -151,24 +151,24 @@ download.
 
 Server (`apps/server/.env`, see [`.env.example`](apps/server/.env.example)):
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `PORT` | `8787` | API port (also serves the web build) |
-| `DATABASE_URL` | `postgresql://postgres:postgres@127.0.0.1:5432/postgres` | PostgreSQL connection |
-| `GEMINI_API_KEY` | empty | Enables the AI designer; empty = rules engine |
-| `GEMINI_MODEL` | `models/gemini-3.8-flash` | Gemini model id |
-| `AI_TIMEOUT_MS` | `60000` | Per-call timeout for Gemini |
-| `TRUST_PROXY` | `false` | `true` behind nginx/Cloudflare so rate limits see real IPs |
-| `CORS_ORIGIN` | any | Comma-separated allowed origins |
-| `WEB_DIST` | `../web/dist` | Built web app to serve |
+| Variable         | Default                                                  | Purpose                                                    |
+| ---------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
+| `PORT`           | `8787`                                                   | API port (also serves the web build)                       |
+| `DATABASE_URL`   | `postgresql://postgres:postgres@127.0.0.1:5432/postgres` | PostgreSQL connection                                      |
+| `GEMINI_API_KEY` | empty                                                    | Enables the AI designer; empty = rules engine              |
+| `GEMINI_MODEL`   | `models/gemini-3.8-flash`                                | Gemini model id                                            |
+| `AI_TIMEOUT_MS`  | `60000`                                                  | Per-call timeout for Gemini                                |
+| `TRUST_PROXY`    | `false`                                                  | `true` behind nginx/Cloudflare so rate limits see real IPs |
+| `CORS_ORIGIN`    | any                                                      | Comma-separated allowed origins                            |
+| `WEB_DIST`       | `../web/dist`                                            | Built web app to serve                                     |
 
 Web (`apps/web/.env`, build-time, see [`.env.example`](apps/web/.env.example)):
 
-| Variable | Purpose |
-| --- | --- |
-| `VITE_ADSENSE_CLIENT` | Google AdSense publisher id; empty = no ads |
-| `VITE_ADSENSE_SLOT_SIDEBAR`, `VITE_ADSENSE_SLOT_LIBRARY` | Ad-unit ids for the two placements |
-| `VITE_API_URL` | API origin when the web app is hosted separately |
+| Variable                                                 | Purpose                                          |
+| -------------------------------------------------------- | ------------------------------------------------ |
+| `VITE_ADSENSE_CLIENT`                                    | Google AdSense publisher id; empty = no ads      |
+| `VITE_ADSENSE_SLOT_SIDEBAR`, `VITE_ADSENSE_SLOT_LIBRARY` | Ad-unit ids for the two placements               |
+| `VITE_API_URL`                                           | API origin when the web app is hosted separately |
 
 For AdSense also replace the placeholder line in
 [`apps/web/public/ads.txt`](apps/web/public/ads.txt).

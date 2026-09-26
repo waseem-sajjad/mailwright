@@ -285,11 +285,11 @@ export const Header: React.FC = () => {
         <header className="flex h-10 min-w-0 items-center justify-between overflow-hidden border-b border-gray-300 bg-hover">
             <section className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden px-2">
                 <a
-                    className="mr-1 flex shrink-0 items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight text-gray-800 hover:bg-gray-100"
+                    className="mr-1 flex shrink-0 items-center gap-1.5 rounded px-1.5 py-1 text-sm font-medium tracking-tight text-indigo-950 hover:bg-gray-100"
                     href="/"
                     title="Mailwright"
                 >
-                    <img className="size-5" src="/logo.svg" alt="" />
+                    <img className="size-6" src="/logo.svg" alt="" />
                     <span className="hidden xl:inline">Mailwright</span>
                 </a>
                 <span className="mx-1 hidden h-5 w-px bg-gray-300 xl:inline" />
