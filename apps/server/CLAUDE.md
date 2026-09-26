@@ -1,38 +1,59 @@
 # Server (apps/server)
 
-Express 5 API on Node 22 with the built-in `node:sqlite`. Provides AI template
-generation (Gemini via `@google/genai`, rules engine fallback), a template
-library with screenshots, and generation history.
+NestJS 11 API (scaffolded with `nest new`, webpack builder) on PostgreSQL 18 +
+pgvector through Prisma 7. Provides AI template generation (Gemini via
+`@google/genai`, rules-engine fallback), a template library with screenshots
+and semantic search, and generation history.
 
 ## Commands (run here)
 
-- `pnpm dev` – tsx watch on http://localhost:8787
-- `pnpm build` – `tsc --noEmit` + esbuild bundle to `dist/index.mjs` (via `build.mjs`, not the esbuild CLI)
-- `pnpm start` – run the bundle (`node dist/index.mjs`)
+- `pnpm dev` – `prisma migrate deploy` then `nest start --watch` on http://localhost:8787
+- `pnpm build` – `prisma generate` + `nest build` (webpack bundle → `dist/main.js`; the
+  bundle includes `@email-builder/shared`, other node_modules stay external)
+- `pnpm start` – migrate, then run the bundle (serves `../web/dist` when present)
+- `pnpm lint` – `tsc --noEmit` + eslint; `pnpm db:migrate:dev` for new migrations,
+  `pnpm db:studio` to browse rows
+- Infra: `docker compose up -d postgres` (repo root), `ollama pull nomic-embed-text`
 
-## Layout
+## Layout (`src/`)
 
-- `src/app.ts` – routes. Every body/param goes through a zod schema in `src/schemas.ts` via `validate()`.
-- `src/ai.ts` – engines: `generate()`, `refine()` and `subjects()` ask Gemini (`GEMINI_API_KEY`, `GEMINI_MODEL`) and fall back to the rules engine when the key is missing, the call fails or the answer does not parse. All three take `history` (earlier chat prompts); `withHistory()` in `generator.ts` derives company/brand/tone/type from it.
-- `src/prompts.ts` – Gemini system instruction (the DSL grammar), the prompt builders, one rules-engine example document and `cleanDsl()` (strips fences).
-- `src/refine.ts` – rules-based follow-up edits (tone, colours, header style, add/remove blocks, button/heading/title text, shorten).
-- `src/subjects.ts` – rules-based subject line / preheader ideas. `src/seed.ts` – starter templates seeded into an empty library.
-- `src/generator.ts` – rules engine (prompt analysis + blueprints + copy banks).
-- `src/dsl.ts` – the compact template DSL: `parseDsl`, `dslToTree`, `stringifyDsl`.
-- `src/db.ts` – SQLite tables `templates` and `generations`; `DATA_DIR` (default `data/`).
-- `src/screenshot.ts` – PNG data URLs saved under `DATA_DIR/screenshots`.
-- Shared code is imported from the web app through the `@/` alias (`../web/src`): types, factory, tree, export. Never import web files that touch the DOM or Vite (`utils/api.ts`, `utils/screenshot.ts` are deliberately not in the utils barrel).
+- `main.ts` – bootstrap: body limit 12 MB (screenshots), CORS, `ApiExceptionFilter`.
+- `app.module.ts` – `ConfigModule` (global, `config/app.config.ts` via `registerAs`,
+  env validated by zod in `config/env.validation.ts`), `ServeStaticModule` for the web
+  build (excludes `/api/{*path}`), `PrismaModule`, `ProvidersModule`, `TemplatesModule`,
+  `AiModule`, `HealthController`.
+- `prisma/prisma.service.ts` – `PrismaClient` + `@prisma/adapter-pg`; creates the
+  `vector` extension on init. Schema in `prisma/schema.prisma`, SQL migrations in
+  `prisma/migrations` (HNSW indexes live there; `Unsupported("vector(768)")` columns
+  are read/written with `$queryRaw`/`$executeRaw`). Generated client:
+  `src/generated/prisma` (gitignored, `postinstall` regenerates).
+- `ai/gemini.service.ts` – text, JSON (subject ideas) and embedding calls.
+- `ai/embeddings.service.ts` – embeddings provider: Ollama `nomic-embed-text`
+  (default, 768-d, task prefixes `search_query:`/`search_document:`), Gemini, or off.
+- `ai/ai.service.ts` – `generate()` (pgvector finds the 2 closest library templates with
+  DSL and hands them to Gemini as examples → `references`), `refine()`, `subjects()`,
+  `expand()`, history and ratings. Falls back to the rules engine whenever Gemini is
+  missing, fails, or answers without a parseable row.
+- `ai/engine/` – pure code shared with nothing else: `dsl.ts` (parse/expand/stringify),
+  `generator.ts` (rules engine, `size: 'large'` adds extra sections, `withHistory()`),
+  `refine.ts`, `subjects.ts`, `prompts.ts` (Gemini grammar + prompt builders).
+- `ai/schemas.ts`, `templates/schemas.ts` – zod bodies; bound per route with
+  `ZodValidationPipe` (`common/zod.pipe.ts`). Errors leave as `{ error, issues? }`.
+- `templates/templates.service.ts` – CRUD, screenshots as `Bytes`, `list({ q })`
+  (vector search when embeddings work, ILIKE otherwise), `similar(id)`, `embedTemplate`,
+  `reindex()` and seeding (web starters + three large rules-engine templates with DSL).
+- Shared code comes from the workspace package `@email-builder/shared` (`/types`,
+  `/utils`): document model, factory, tree, export, starters. `webpack.config.js`
+  allowlists it so its TypeScript source is bundled instead of treated as external.
 
-## Env
+## Conventions
 
-Loaded from `.env` when present (see `.env.example`): `PORT` (8787), `DATA_DIR`,
-`GEMINI_API_KEY` (unset = rules engine only), `GEMINI_MODEL` (default
-`models/gemini-3.8-flash`), `AI_TIMEOUT_MS`, `CORS_ORIGIN` (comma list),
-`WEB_DIST` (serves the built web app when present).
-Templates carry a `kind`: `starter` (seeded), `user`, `ai` (saved with a prompt).
-
-## Rules
-
-- Add a request field → add it to the zod schema first.
-- New DSL block → `dsl.ts` (`BLOCK_KINDS`, `blockToNode`), the grammar in `prompts.ts` and, if the rules engine should emit it, `generator.ts`.
-- Keep the DSL small and strict: Gemini answers are only accepted when `parseDsl` yields at least one row.
+- Constructor injection uses explicit `@Inject(Token)`; keep it that way so the code
+  also runs under esbuild/tsx style transpilers that drop decorator metadata.
+- Add a request field → zod schema first. New DSL block → `engine/dsl.ts`, the grammar in
+  `engine/prompts.ts`, and `engine/generator.ts` if the rules engine should emit it.
+- Anything that should be searchable must get an embedding: call `embedTemplate(id)`
+  after writes (create/update already do).
+- Env: `PORT`, `DATABASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `AI_TIMEOUT_MS`,
+  `EMBEDDINGS_PROVIDER` (ollama|gemini|off), `OLLAMA_URL`, `OLLAMA_EMBED_MODEL`,
+  `GEMINI_EMBEDDING_MODEL`, `CORS_ORIGIN`, `WEB_DIST`.

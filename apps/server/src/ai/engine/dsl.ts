@@ -1,7 +1,6 @@
 /**
- * Compact template DSL: the text the AI model produces and the rules engine
- * emits. It is short enough for a small seq2seq model and expands into the
- * builder's EmailNode tree.
+ * Compact template DSL: the text Gemini writes and the rules engine emits.
+ * It is short, strict and expands into the builder's EmailNode tree.
  *
  *   title: Welcome to ACME
  *   preheader: Three quick things to get you started
@@ -13,15 +12,8 @@
  *   row 1-2: image | heading "Story"; text "Teaser"; button "Read more"
  *   row light: social; footer "ACME Inc" "123 Example St, Sydney"
  */
-import type { CanvasNode, ColumnLayout, EmailNode, RGBColor } from '@/types';
-import {
-    createCanvas,
-    createContent,
-    createRow,
-    iconItem,
-    newId,
-    rgb,
-} from '@/utils';
+import type { CanvasNode, ColumnLayout, EmailNode, RGBColor } from '@email-builder/shared/types';
+import { createCanvas, createContent, createRow, iconItem, newId, rgb } from '@email-builder/shared/utils';
 
 export interface DslBlock {
     kind: string;
@@ -100,9 +92,7 @@ const parseBlock = (raw: string): DslBlock | null => {
     return { kind, args, url };
 };
 
-const parseRowHeader = (
-    header: string,
-): { layout: string; style: DslRow['style'] } => {
+const parseRowHeader = (header: string): { layout: string; style: DslRow['style'] } => {
     const tokens = header.trim().split(/\s+/).slice(1);
     let layout = '1';
     let style: DslRow['style'] = 'plain';
@@ -135,14 +125,12 @@ export const parseDsl = (text: string): DslDocument => {
         const rowMatch = trimmed.match(/^(row[^:]*):\s*(.*)$/i);
         if (!rowMatch) return;
         const { layout, style } = parseRowHeader(rowMatch[1]);
-        const columns = rowMatch[2]
-            .split('|')
-            .map((column) =>
-                column
-                    .split(';')
-                    .map(parseBlock)
-                    .filter((b): b is DslBlock => b !== null),
-            );
+        const columns = rowMatch[2].split('|').map((column) =>
+            column
+                .split(';')
+                .map(parseBlock)
+                .filter((b): b is DslBlock => b !== null),
+        );
         doc.rows.push({ layout, style, columns });
     });
     return doc;
@@ -150,6 +138,7 @@ export const parseDsl = (text: string): DslDocument => {
 
 const setText = (node: EmailNode, patch: object): EmailNode => ({
     ...node,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     properties: { ...node.properties, ...patch },
 });
 
@@ -220,20 +209,16 @@ const blockToNode = (block: DslBlock, theme: Theme): EmailNode | null => {
             return setText(createContent('Footer'), {
                 company: args[0] ?? 'Company',
                 address: args[1] ?? '',
-                ...(theme.dark
-                    ? { color: rgb(209, 213, 219), linkColor: rgb(209, 213, 219) }
-                    : {}),
+                ...(theme.dark ? { color: rgb(209, 213, 219), linkColor: rgb(209, 213, 219) } : {}),
             });
         case 'icons':
             return setText(createContent('Icons'), {
-                items: (args.length > 0 ? args : ['✓ Feature|Description']).map(
-                    (a) => {
-                        const [head, text] = splitPair(a);
-                        const icon = head.match(/^\S+/)?.[0] ?? '✓';
-                        const title = head.slice(icon.length).trim() || 'Feature';
-                        return iconItem(icon, title, text);
-                    },
-                ),
+                items: (args.length > 0 ? args : ['✓ Feature|Description']).map((a) => {
+                    const [head, text] = splitPair(a);
+                    const icon = head.match(/^\S+/)?.[0] ?? '✓';
+                    const title = head.slice(icon.length).trim() || 'Feature';
+                    return iconItem(icon, title, text);
+                }),
                 layout: 'horizontal',
                 align: 'center',
                 iconBackground: theme.dark ? white : rgb(219, 234, 254),
@@ -268,15 +253,12 @@ const blockToNode = (block: DslBlock, theme: Theme): EmailNode | null => {
                 accentColor: theme.brand,
             });
         case 'table': {
-            const rows = (args.length > 0 ? args : ['Item,Qty', 'Sample,1']).map(
-                (row) => row.split(',').map((c) => c.trim()),
+            const rows = (args.length > 0 ? args : ['Item,Qty', 'Sample,1']).map((row) =>
+                row.split(',').map((c) => c.trim()),
             );
             const width = Math.max(...rows.map((r) => r.length));
             return setText(createContent('Table'), {
-                rows: rows.map((r) => [
-                    ...r,
-                    ...Array.from({ length: width - r.length }, () => ''),
-                ]),
+                rows: rows.map((r) => [...r, ...Array.from({ length: width - r.length }, () => '')]),
             });
         }
         case 'video':
@@ -332,8 +314,7 @@ export const dslToTree = (doc: DslDocument): CanvasNode => {
 /** Serialises a DSL document back to text (used for datasets and history). */
 export const stringifyDsl = (doc: DslDocument): string => {
     const q = (s: string) => `"${s.replace(/"/g, "'")}"`;
-    const block = (b: DslBlock) =>
-        [b.kind, ...b.args.map(q), b.url ?? ''].filter(Boolean).join(' ');
+    const block = (b: DslBlock) => [b.kind, ...b.args.map(q), b.url ?? ''].filter(Boolean).join(' ');
     const lines = [
         `title: ${doc.title}`,
         `preheader: ${doc.preheader}`,

@@ -1,0 +1,46 @@
+// Prisma 7 with the pg driver adapter (see src/prisma/prisma.service.ts).
+// `embedding` columns are pgvector vectors written and queried with raw SQL.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Template {
+  id             String                       @id
+  name           String
+  kind           String                       @default("user")
+  prompt         String?
+  /// Compact DSL when the template came from the AI or a DSL starter.
+  dsl            String?
+  root           Json
+  screenshot     Bytes?
+  screenshotType String?                      @map("screenshot_type")
+  embedding      Unsupported("vector(768)")?
+  createdAt      DateTime                     @default(now()) @map("created_at")
+  updatedAt      DateTime                     @updatedAt @map("updated_at")
+
+  @@index([kind])
+  @@map("templates")
+}
+
+model Generation {
+  id        String                       @id
+  prompt    String
+  options   Json
+  dsl       String
+  root      Json
+  engine    String
+  rating    Int                          @default(0)
+  embedding Unsupported("vector(768)")?
+  createdAt DateTime                     @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("generations")
+}

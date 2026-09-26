@@ -1,12 +1,11 @@
 /**
  * Rules-based refinement: applies a chat instruction ("make the header dark",
  * "add a coupon SAVE10", "professional tone") to an existing DSL document.
- * Used by /api/ai/refine when no model answers, and to synthesise
- * refinement examples for fine-tuning.
+ * Used by /api/ai/refine when Gemini is not configured or fails.
  */
-import type { DslBlock, DslDocument, DslRow } from './dsl.ts';
-import { parseDsl, stringifyDsl } from './dsl.ts';
-import { analyse, blueprint, mulberry32, type GenerateOptions, type Tone } from './generator.ts';
+import type { DslBlock, DslDocument, DslRow } from './dsl';
+import { parseDsl, stringifyDsl } from './dsl';
+import { analyse, blueprint, mulberry32, type GenerateOptions, type Tone } from './generator';
 
 export interface RefineResult {
     dsl: string;
@@ -46,22 +45,54 @@ const ADDABLE: Record<string, (text: string) => DslBlock[]> = {
     social: () => [block('social')],
     video: (t) => [block('video', [], t.match(/https?:\/\/\S+/)?.[0])],
     image: (t) => [block('image', ['Image'], t.match(/https?:\/\/\S+/)?.[0])],
-    button: (t) => [block('button', [quoted(t) ?? 'Learn more'], t.match(/https?:\/\/\S+/)?.[0] ?? 'https://example.com')],
+    button: (t) => [
+        block('button', [quoted(t) ?? 'Learn more'], t.match(/https?:\/\/\S+/)?.[0] ?? 'https://example.com'),
+    ],
     divider: () => [block('divider')],
     spacer: () => [block('spacer', ['30'])],
     product: (t) => [block('product', [quoted(t) ?? 'Featured product', '$48.00', '$60.00'])],
     callout: (t) => [block('callout', ['Heads up', quoted(t) ?? 'Something worth knowing before you go.'])],
     list: () => [block('list', ['First point', 'Second point', 'Third point'])],
     menu: () => [block('menu', ['Home', 'Products', 'Contact'])],
-    icons: () => [block('icons', ['✓ Simple|Up and running in minutes.', '★ Trusted|Thousands of happy customers.', '♥ Support|Real people, quick replies.'])],
-    features: () => [block('icons', ['✓ Simple|Up and running in minutes.', '★ Trusted|Thousands of happy customers.', '♥ Support|Real people, quick replies.'])],
+    icons: () => [
+        block('icons', [
+            '✓ Simple|Up and running in minutes.',
+            '★ Trusted|Thousands of happy customers.',
+            '♥ Support|Real people, quick replies.',
+        ]),
+    ],
+    features: () => [
+        block('icons', [
+            '✓ Simple|Up and running in minutes.',
+            '★ Trusted|Thousands of happy customers.',
+            '♥ Support|Real people, quick replies.',
+        ]),
+    ],
     footer: () => [block('footer', ['Company', '123 Example Street'])],
     heading: (t) => [block('heading', [quoted(t) ?? 'New section'])],
     text: (t) => [block('text', [quoted(t) ?? 'Add your paragraph here.'])],
     paragraph: (t) => [block('text', [quoted(t) ?? 'Add your paragraph here.'])],
 };
 
-const REMOVABLE = ['coupon', 'table', 'quote', 'social', 'video', 'image', 'button', 'divider', 'spacer', 'product', 'callout', 'list', 'menu', 'icons', 'footer', 'heading', 'text'];
+const REMOVABLE = [
+    'coupon',
+    'table',
+    'quote',
+    'social',
+    'video',
+    'image',
+    'button',
+    'divider',
+    'spacer',
+    'product',
+    'callout',
+    'list',
+    'menu',
+    'icons',
+    'footer',
+    'heading',
+    'text',
+];
 
 /** Applies one instruction to the document. Returns what it did. */
 const applyOne = (
@@ -137,10 +168,15 @@ const applyOne = (
             applied.push(`Changed the button text to “${label}”`);
         }
     }
-    if (/\b(main )?(heading|headline)\b/.test(lower) && /\b(to|say|change|replace)\b/.test(lower) && !/\badd\b/.test(lower)) {
+    if (
+        /\b(main )?(heading|headline)\b/.test(lower) &&
+        /\b(to|say|change|replace)\b/.test(lower) &&
+        !/\badd\b/.test(lower)
+    ) {
         const label = quoted(text);
         if (label) {
-            const hero = doc.rows.find((r, i) => i > 0 && hasKind(r, 'heading')) ?? doc.rows.find((r) => hasKind(r, 'heading'));
+            const hero =
+                doc.rows.find((r, i) => i > 0 && hasKind(r, 'heading')) ?? doc.rows.find((r) => hasKind(r, 'heading'));
             const target = hero?.columns.flat().find((b) => b.kind === 'heading');
             if (target) {
                 target.args[0] = label;
@@ -150,7 +186,9 @@ const applyOne = (
     }
 
     // Add / remove blocks.
-    const addMatch = lower.match(/\b(?:add|insert|include|put)\b.*?\b(coupon|table|quote|testimonial|social|video|image|button|divider|spacer|product|callout|list|menu|icons|features|footer|heading|text|paragraph)\b/);
+    const addMatch = lower.match(
+        /\b(?:add|insert|include|put)\b.*?\b(coupon|table|quote|testimonial|social|video|image|button|divider|spacer|product|callout|list|menu|icons|features|footer|heading|text|paragraph)\b/,
+    );
     if (addMatch) {
         const kind = addMatch[1];
         const blocks = ADDABLE[kind](text);
@@ -163,7 +201,9 @@ const applyOne = (
         }
         applied.push(`Added a ${kind}`);
     }
-    const removeMatch = lower.match(/\b(?:remove|delete|drop|get rid of|without)\b.*?\b(coupon|table|quote|social|video|image|button|divider|spacer|product|callout|list|menu|icons|footer|heading|text)\b/);
+    const removeMatch = lower.match(
+        /\b(?:remove|delete|drop|get rid of|without)\b.*?\b(coupon|table|quote|social|video|image|button|divider|spacer|product|callout|list|menu|icons|footer|heading|text)\b/,
+    );
     if (removeMatch) {
         const kind = removeMatch[1];
         if (!REMOVABLE.includes(kind)) return applied;
@@ -195,7 +235,8 @@ const applyOne = (
         doc.rows.forEach((r) =>
             r.columns.forEach((c) =>
                 c.forEach((b) => {
-                    if (b.kind === 'text' && b.args[0]) b.args[0] = b.args[0].replace(/^[^.!?]*\{\{first_name\}\}[^.!?]*[.!?:,]\s*/, '');
+                    if (b.kind === 'text' && b.args[0])
+                        b.args[0] = b.args[0].replace(/^[^.!?]*\{\{first_name\}\}[^.!?]*[.!?:,]\s*/, '');
                 }),
             ),
         );
@@ -225,4 +266,3 @@ export const refineDsl = (
     }
     return { dsl: stringifyDsl(doc), applied };
 };
-

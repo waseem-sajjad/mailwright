@@ -1,8 +1,9 @@
 /**
  * Prompts for Gemini. The model writes the compact template DSL from
- * `dsl.ts`; the grammar below and one rules-engine example keep it on format.
+ * `dsl.ts`; the grammar below, one rules-engine example and (when pgvector
+ * finds them) similar templates from the library keep it on format.
  */
-import { generateDsl, type GenerateOptions } from './generator.ts';
+import { generateDsl, type GenerateOptions } from './generator';
 
 export const SYSTEM_INSTRUCTION = `You are an email designer. You answer ONLY with an email template written in the compact DSL below: no markdown fences, no explanations, no blank lines.
 
@@ -38,17 +39,25 @@ BLOCKS (arguments in double quotes, URLs unquoted after the arguments)
   video https://www.youtube.com/watch?v=VIDEO_ID
 
 RULES
-- 5 to 9 rows. Start with a header row (dark or brand style: heading with the company name; menu). Finish with: row light: social; footer "Company" "Address".
+- Standard length: 5 to 9 rows. Large length: 10 to 14 rows that also cover a features grid (row 3 with icons), a product row (row 2 with products), a testimonial quote, a comparison table or callout, a coupon when it fits and a closing brand-styled call to action.
+- Start with a header row (dark or brand style: heading with the company name; menu). Finish with: row light: social; footer "Company" "Address".
 - Put the main message in the first plain row: heading, text, button. Use one clear call to action; repeat the button near the end.
 - Keep copy concrete and on brief: real product names, offers and dates from the request. Address the reader with {{first_name}}.
 - Never use a double quote inside an argument; use a single quote instead. Never invent keys other than title, preheader, brand, bg, row.
 - Every row must contain at least one block. Output plain text only.`;
 
 /** A rules-engine document so the model sees the exact format once. */
-export const EXAMPLE_DSL = generateDsl(
-    'Welcome email for Bluebird Coffee, a friendly neighbourhood cafe.',
-    { type: 'welcome', tone: 'friendly', company: 'Bluebird Coffee', seed: 11 },
-);
+export const EXAMPLE_DSL = generateDsl('Welcome email for Bluebird Coffee, a friendly neighbourhood cafe.', {
+    type: 'welcome',
+    tone: 'friendly',
+    company: 'Bluebird Coffee',
+    seed: 11,
+});
+
+export interface LibraryExample {
+    name: string;
+    dsl: string;
+}
 
 const hints = (options: GenerateOptions): string[] => {
     const out: string[] = [];
@@ -56,31 +65,36 @@ const hints = (options: GenerateOptions): string[] => {
     if (options.tone && options.tone !== 'auto') out.push(`Tone: ${options.tone}.`);
     if (options.company) out.push(`Company: ${options.company}.`);
     if (options.brand) out.push(`Brand colour: ${options.brand}.`);
+    out.push(options.size === 'large' ? 'Length: LARGE (10 to 14 rows).' : 'Length: standard (5 to 9 rows).');
     return out;
 };
 
 const historyBlock = (history: string[], label: string): string =>
     history.length > 0 ? `\n\n${label}\n${history.map((h) => `- ${h}`).join('\n')}` : '';
 
+const examplesBlock = (examples: LibraryExample[]): string =>
+    examples.length > 0
+        ? `\n\nSIMILAR TEMPLATES FROM THE LIBRARY (style and structure reference only; write new copy):\n${examples
+              .map((e) => `### ${e.name}\n${e.dsl}`)
+              .join('\n\n')}`
+        : '';
+
 export const generatePrompt = (
     prompt: string,
     options: GenerateOptions,
     history: string[],
+    examples: LibraryExample[] = [],
 ): string =>
     [
         `EXAMPLE OF THE FORMAT (different brief, do not copy its content):\n${EXAMPLE_DSL}`,
+        examplesBlock(examples),
         `\n\nREQUEST\n${prompt}`,
-        hints(options).length > 0 ? `\n${hints(options).join(' ')}` : '',
+        `\n${hints(options).join(' ')}`,
         historyBlock(history, 'Earlier requests in this conversation (context only, the new request wins):'),
         '\n\nWrite the template now.',
     ].join('');
 
-export const refinePrompt = (
-    prompt: string,
-    dsl: string,
-    instruction: string,
-    history: string[],
-): string =>
+export const refinePrompt = (prompt: string, dsl: string, instruction: string, history: string[]): string =>
     [
         `ORIGINAL BRIEF\n${prompt}`,
         `\n\nCURRENT TEMPLATE\n${dsl}`,
@@ -91,9 +105,9 @@ export const refinePrompt = (
 
 export const subjectsPrompt = (prompt: string, options: GenerateOptions, history: string[]): string =>
     [
-        `Write 5 subject lines (under 50 characters, no emoji spam) and 3 preheaders (under 90 characters) for this email.`,
+        'Write 5 subject lines (under 50 characters, no emoji spam) and 3 preheaders (under 90 characters) for this email.',
         `\n\nBRIEF\n${prompt}`,
-        hints(options).length > 0 ? `\n${hints(options).join(' ')}` : '',
+        `\n${hints(options).slice(0, -1).join(' ')}`,
         historyBlock(history, 'Conversation so far:'),
     ].join('');
 
