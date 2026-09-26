@@ -160,8 +160,8 @@ What the web side must know:
   `/:id/screenshot`, `/:id/html`, `/:id/duplicate`. Errors are `{ error }`.
 - Generation options: `type`, `tone`, `size` (`standard` | `large`), `brand`,
   `company`; bodies also take `history` (earlier chat prompts). Responses carry
-  `engine` (`gemini` | `rules`), `dsl`, `root`, `html`, `references` (library
-  templates pgvector matched to the brief).
+  `engine` (`gemini` | `rules`), `dsl`, `root`, `html`, `summary` (the designer's
+  note, shown as the chat reply), `references` (library templates shown to Gemini).
 - Shared code is the `@email-builder/shared` package; keep DOM/Vite modules
   (api.ts, screenshot.ts, storage, selection) in `apps/web/src/utils` only.
 - Web side: `utils/api.ts` (axios). The AI is a chat in the left sidebar
@@ -171,13 +171,13 @@ What the web side must know:
   creates a conversation on demand, shows the user message optimistically,
   then swaps in the server's user + assistant messages and context. The
   panel header toggles a history view (search, open, rename, delete, New
-  chat); the server decides intent (search / subjects / refine / generate).
+  chat); the server decides intent (search / subjects / refine / generate /
+  answer) with Gemini.
   Each generation card has a DSL toggle (`DslView`), a "Save to library"
   button (sends the DSL) and shows its references; the context bar shows
   the brief, applied changes, current DSL and a reset (server-side).
 - Template library (`components/library.tsx`) is server-only: debounced
-  server search (`listCloudTemplates({ q })`, "Best match" sort when scores
-  come back), a Similar action per card, screenshots via `captureCanvas()`
+  server keyword search (`listCloudTemplates({ q })`), screenshots via `captureCanvas()`
   (`html-to-image`; `data-editor-only` elements are skipped) with a live
   scaled iframe as fallback thumbnail.
 - `utils/api-bridge.ts` exists only so the chat panel can import a few

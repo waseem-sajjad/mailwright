@@ -9,10 +9,25 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TemplatesService } from '../templates/templates.service';
 import { dslToTree, parseDsl } from './engine/dsl';
 import { generateDsl, type GenerateOptions, withHistory } from './engine/generator';
-import { cleanDsl, generatePrompt, refinePrompt, subjectsPrompt, SYSTEM_INSTRUCTION } from './engine/prompts';
+import {
+    ANSWER_INSTRUCTION,
+    GENERATE_SCHEMA,
+    INTENT_INSTRUCTION,
+    INTENT_SCHEMA,
+    REFINE_SCHEMA,
+    SUBJECTS_INSTRUCTION,
+    SUBJECTS_SCHEMA,
+    SYSTEM_INSTRUCTION,
+    TITLE_INSTRUCTION,
+    answerPrompt,
+    cleanDsl,
+    generatePrompt,
+    intentPrompt,
+    refinePrompt,
+    subjectsPrompt,
+} from './engine/prompts';
 import { refineDsl } from './engine/refine';
 import { suggestSubjects } from './engine/subjects';
-import { EmbeddingsService } from './embeddings.service';
 import { GeminiService } from './gemini.service';
 
 export type Engine = 'gemini' | 'rules';
@@ -30,7 +45,9 @@ export interface GenerationResponse {
     dsl: string;
     root: CanvasNode;
     html: string;
-    /** Library templates pgvector found similar to the brief and showed to Gemini. */
+    /** The designer's note to the client: structure and creative decisions. */
+    summary: string;
+    /** Library templates shown to Gemini as structure references. */
     references: Reference[];
 }
 
@@ -45,16 +62,38 @@ export interface SubjectIdeas {
     engine: Engine;
 }
 
+export type IntentKind = 'generate' | 'refine' | 'subjects' | 'search' | 'answer';
+
+export interface Intent {
+    kind: IntentKind;
+    query: string;
+    engine: Engine;
+}
+
+interface GenerateJson {
+    dsl?: string;
+    summary?: string;
+}
+
+interface RefineJson extends GenerateJson {
+    changes?: string[];
+}
+
 const toRoot = (dsl: string): CanvasNode => normalizeNode(dslToTree(parseDsl(dsl))) as CanvasNode;
 
 /** A model answer must at least parse into one row to be trusted. */
 const usable = (dsl: string): boolean => parseDsl(dsl).rows.length > 0;
 
+const lines = (value: unknown): string[] =>
+    Array.isArray(value)
+        ? value.filter((v): v is string => typeof v === 'string' && v.trim() !== '').map((v) => v.trim())
+        : [];
+
 /**
- * Generation, refinement and subject ideas: Gemini first (with the library
- * templates pgvector finds closest to the brief as few-shot context), rules
- * engine otherwise. Every result is stored in `generations` with the
- * embedding of its prompt.
+ * The AI behind the chat: Gemini acts as a senior email designer (structured
+ * JSON answers with a rationale, library templates as references), and the
+ * rules engine steps in whenever Gemini is missing or fails, so the product
+ * always answers.
  */
 @Injectable()
 export class AiService {
@@ -63,16 +102,16 @@ export class AiService {
     constructor(
         @Inject(PrismaService) private readonly prisma: PrismaService,
         @Inject(GeminiService) private readonly gemini: GeminiService,
-        @Inject(EmbeddingsService) private readonly embeddings: EmbeddingsService,
         @Inject(TemplatesService) private readonly templates: TemplatesService,
     ) {}
 
     status() {
-        const embeddings = this.embeddings.info();
         return this.gemini.enabled
-            ? { ok: true, engine: 'gemini' as const, model: this.gemini.model, embeddings }
-            : { ok: true, engine: 'rules' as const, model: null, embeddings };
+            ? { ok: true, engine: 'gemini' as const, model: this.gemini.model }
+            : { ok: true, engine: 'rules' as const, model: null };
     }
+
+    /* ---------- generation ---------- */
 
     async generate(
         prompt: string,
@@ -81,28 +120,33 @@ export class AiService {
         conversationId?: string,
     ): Promise<GenerationResponse> {
         const effective = withHistory(prompt, options, history);
-        const embedding = await this.embeddings.embed(prompt, 'RETRIEVAL_QUERY');
-        const examples = embedding ? await this.templates.similarByVector(embedding, 2, { withDsl: true }) : [];
-        const answer = await this.gemini.text(
+        const examples = this.gemini.enabled ? await this.templates.examplesFor(prompt, 2) : [];
+        const answer = await this.gemini.json<GenerateJson>(
             SYSTEM_INSTRUCTION,
             generatePrompt(
                 prompt,
                 effective,
                 history,
-                examples.map((e) => ({ name: e.name, dsl: e.dsl ?? '' })),
+                examples.map((e) => ({ name: e.name, dsl: e.dsl })),
             ),
-            0.9,
+            GENERATE_SCHEMA,
+            0.8,
         );
-        const fromModel = answer ? cleanDsl(answer) : null;
+        const fromModel = answer?.dsl ? cleanDsl(answer.dsl) : null;
         let dsl: string;
         let engine: Engine;
+        let summary: string;
         if (fromModel && usable(fromModel)) {
             dsl = fromModel;
             engine = 'gemini';
+            summary =
+                answer?.summary?.trim() || 'Here is a first draft. Tell me what to change, or apply it to the editor.';
         } else {
             if (fromModel) this.logger.warn('Gemini answer did not parse as DSL; using the rules engine');
             dsl = generateDsl(prompt, effective);
             engine = 'rules';
+            summary =
+                'Here is a first draft from the built-in engine. Tell me what to change, or apply it to the editor.';
         }
         const root = toRoot(dsl);
         const id = await this.remember({
@@ -111,7 +155,6 @@ export class AiService {
             dsl,
             root,
             engine,
-            embedding,
             conversationId,
         });
         return {
@@ -122,7 +165,8 @@ export class AiService {
             dsl,
             root,
             html: exportHtml(root),
-            references: examples.map((e) => ({ id: e.id, name: e.name })),
+            summary,
+            references: engine === 'gemini' ? examples.map((e) => ({ id: e.id, name: e.name })) : [],
         };
     }
 
@@ -135,14 +179,30 @@ export class AiService {
         conversationId?: string,
     ): Promise<RefinementResponse> {
         const effective = withHistory(instruction, options, [prompt, ...history]);
-        const answer = await this.gemini.text(SYSTEM_INSTRUCTION, refinePrompt(prompt, dsl, instruction, history), 0.4);
-        const fromModel = answer ? cleanDsl(answer) : null;
-        let next: { dsl: string; engine: Engine; applied: string[] };
+        const answer = await this.gemini.json<RefineJson>(
+            SYSTEM_INSTRUCTION,
+            refinePrompt(prompt, dsl, instruction, history),
+            REFINE_SCHEMA,
+            0.4,
+        );
+        const fromModel = answer?.dsl ? cleanDsl(answer.dsl) : null;
+        let next: { dsl: string; engine: Engine; applied: string[]; summary: string };
         if (fromModel && usable(fromModel) && fromModel !== dsl) {
-            next = { dsl: fromModel, engine: 'gemini', applied: [`Applied “${instruction}”`] };
+            const changes = lines(answer?.changes);
+            next = {
+                dsl: fromModel,
+                engine: 'gemini',
+                applied: changes.length > 0 ? changes : [`Applied: ${instruction}`],
+                summary: answer?.summary?.trim() || 'Updated the template.',
+            };
         } else {
             const result = refineDsl(dsl, instruction, { prompt, options: effective });
-            next = { dsl: result.dsl, engine: 'rules', applied: result.applied };
+            next = {
+                dsl: result.dsl,
+                engine: 'rules',
+                applied: result.applied,
+                summary: result.applied.length > 0 ? `${result.applied.join('. ')}.` : 'Updated the template.',
+            };
         }
         const root = toRoot(next.dsl);
         const id = await this.remember({
@@ -151,7 +211,6 @@ export class AiService {
             dsl: next.dsl,
             root,
             engine: next.engine,
-            embedding: await this.embeddings.embed(`${prompt}. ${instruction}`, 'RETRIEVAL_DOCUMENT'),
             conversationId,
         });
         return {
@@ -162,6 +221,7 @@ export class AiService {
             dsl: next.dsl,
             root,
             html: exportHtml(root),
+            summary: next.summary,
             references: [],
             applied: next.applied,
         };
@@ -171,9 +231,62 @@ export class AiService {
         const effective = withHistory(prompt, options, history);
         const brief = history.length > 0 ? `${history.join('. ')}. ${prompt}` : prompt;
         const fallback: SubjectIdeas = { ...suggestSubjects(brief, effective), engine: 'rules' };
-        const ideas = await this.gemini.subjectIdeas(subjectsPrompt(prompt, effective, history));
-        return ideas ? { ...ideas, type: fallback.type, engine: 'gemini' } : fallback;
+        const ideas = await this.gemini.json<{ subjects?: unknown; preheaders?: unknown }>(
+            SUBJECTS_INSTRUCTION,
+            subjectsPrompt(prompt, effective, history),
+            SUBJECTS_SCHEMA,
+            0.9,
+        );
+        const subjects = lines(ideas?.subjects);
+        return subjects.length > 0
+            ? { subjects, preheaders: lines(ideas?.preheaders), type: fallback.type, engine: 'gemini' }
+            : fallback;
     }
+
+    /* ---------- conversation helpers ---------- */
+
+    /** What a chat message asks for; Gemini decides, heuristics when it is off. */
+    async classify(
+        text: string,
+        hasContext: boolean,
+        fallback: () => { kind: IntentKind; query: string },
+    ): Promise<Intent> {
+        const decided = await this.gemini.json<{ intent?: string; query?: string }>(
+            INTENT_INSTRUCTION,
+            intentPrompt(text, hasContext),
+            INTENT_SCHEMA,
+            0,
+        );
+        const kinds: IntentKind[] = ['generate', 'refine', 'subjects', 'search', 'answer'];
+        if (decided?.intent && kinds.includes(decided.intent as IntentKind)) {
+            let kind = decided.intent as IntentKind;
+            if (kind === 'refine' && !hasContext) kind = 'generate';
+            return { kind, query: (decided.query ?? '').trim(), engine: 'gemini' };
+        }
+        return { ...fallback(), engine: 'rules' };
+    }
+
+    /** A consultant-style reply to a question that needs no template. */
+    async answer(text: string, context: { prompt: string; dsl: string } | null, history: string[]): Promise<string> {
+        const reply = await this.gemini.text(ANSWER_INSTRUCTION, answerPrompt(text, context, history), 0.6, 2048);
+        return (
+            reply ??
+            'I can design emails from a brief, refine the one in the editor, and suggest subject lines. Describe the email you need and I will draft it.'
+        );
+    }
+
+    /** A short conversation title for the history list. */
+    async title(text: string): Promise<string | null> {
+        // Thinking models spend output tokens before the answer; keep the budget generous.
+        const reply = await this.gemini.text(TITLE_INSTRUCTION, text, 0.3, 512);
+        const title = reply
+            ?.replace(/^["“']+|["”']+$/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return title && title.length <= 80 ? title : null;
+    }
+
+    /* ---------- misc ---------- */
 
     /** Re-expands edited DSL without calling the model. */
     expand(dsl: string): { root: CanvasNode; html: string; name: string } {
@@ -215,7 +328,6 @@ export class AiService {
         dsl: string;
         root: CanvasNode;
         engine: Engine;
-        embedding: number[] | null;
         conversationId?: string;
     }): Promise<string> {
         const id = newId();
@@ -230,10 +342,6 @@ export class AiService {
                 engine: input.engine,
             },
         });
-        if (input.embedding) {
-            await this.prisma
-                .$executeRaw`UPDATE generations SET embedding = ${JSON.stringify(input.embedding)}::vector WHERE id = ${id}`;
-        }
         return id;
     }
 }

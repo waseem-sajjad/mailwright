@@ -21,7 +21,7 @@ const id = () => new ZodValidationPipe(idParam);
 export class TemplatesController {
     constructor(@Inject(TemplatesService) private readonly templates: TemplatesService) {}
 
-    /** `?q=` searches by meaning with pgvector when Gemini is configured, by keyword otherwise. */
+    /** `?q=` searches name, prompt and DSL by keyword. */
     @Get()
     list(@Query(new ZodValidationPipe(listQuery)) query: ListQuery) {
         return this.templates.list(query);
@@ -30,11 +30,6 @@ export class TemplatesController {
     @Get(':id')
     get(@Param('id', id()) templateId: string) {
         return this.templates.get(templateId);
-    }
-
-    @Get(':id/similar')
-    similar(@Param('id', id()) templateId: string) {
-        return this.templates.similar(templateId, 6);
     }
 
     @Get(':id/screenshot')

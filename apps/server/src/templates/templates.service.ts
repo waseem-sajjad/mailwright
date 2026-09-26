@@ -1,11 +1,10 @@
 import { Inject, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from '@nestjs/common';
 
-import type { CanvasNode, EmailNode } from '@email-builder/shared/types';
+import type { CanvasNode } from '@email-builder/shared/types';
 import { normalizeNode, templates as starters } from '@email-builder/shared/utils';
 
 import { dslToTree, parseDsl } from '../ai/engine/dsl';
 import { generateDsl } from '../ai/engine/generator';
-import { EmbeddingsService } from '../ai/embeddings.service';
 import { decodeDataUrl, newId } from '../common/ids';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,26 +20,11 @@ export interface TemplateSummary {
     screenshot: string | null;
     createdAt: string;
     updatedAt: string;
-    /** Cosine similarity (0..1) when the list came from a vector search. */
-    score?: number;
 }
 
 export interface TemplateDetail extends TemplateSummary {
     root: CanvasNode;
     dsl: string | null;
-}
-
-interface RawRow {
-    id: string;
-    name: string;
-    kind: string;
-    prompt: string | null;
-    dsl?: string | null;
-    has_dsl?: boolean;
-    has_shot: boolean;
-    created_at: Date;
-    updated_at: Date;
-    score?: number;
 }
 
 const SUMMARY_SELECT = {
@@ -76,44 +60,42 @@ const LARGE_STARTERS: { name: string; prompt: string; type: string; tone: string
     },
 ];
 
-/** Text that represents a template for embeddings and keyword search. */
-export const templateText = (name: string, prompt: string | null, dsl: string | null, root: EmailNode): string => {
-    const parts: string[] = [name];
-    if (prompt) parts.push(prompt);
-    if (dsl) parts.push(dsl);
-    else {
-        const walk = (node: EmailNode): void => {
-            Object.entries(node.properties as Record<string, unknown>).forEach(([key, value]) => {
-                if (['id', 'type', 'fontFamily', 'align', 'href', 'src', 'url', 'image'].includes(key)) return;
-                const push = (v: unknown): void => {
-                    if (typeof v === 'string' && v.length > 2 && !/^(#|https?:|data:|rgb)/i.test(v)) {
-                        parts.push(v.replace(/<[^>]+>/g, ' '));
-                    } else if (Array.isArray(v)) v.forEach(push);
-                    else if (v && typeof v === 'object') Object.values(v as Record<string, unknown>).forEach(push);
-                };
-                push(value);
-            });
-            node.children.forEach(walk);
-        };
-        walk(root);
-    }
-    return parts.join('\n').replace(/\s+/g, ' ').slice(0, 6000);
-};
+const STOP_WORDS = new Set([
+    'email',
+    'template',
+    'with',
+    'that',
+    'this',
+    'from',
+    'your',
+    'about',
+    'make',
+    'create',
+    'write',
+    'design',
+    'tone',
+    'friendly',
+    'professional',
+    'please',
+    'campaign',
+    'send',
+    'like',
+    'have',
+    'them',
+    'they',
+    'their',
+]);
 
 @Injectable()
 export class TemplatesService implements OnApplicationBootstrap {
     private readonly logger = new Logger(TemplatesService.name);
 
-    constructor(
-        @Inject(PrismaService) private readonly prisma: PrismaService,
-        @Inject(EmbeddingsService) private readonly embeddings: EmbeddingsService,
-    ) {}
+    constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
     async onApplicationBootstrap(): Promise<void> {
         try {
             const added = await this.seed();
             if (added > 0) this.logger.log(`seeded ${added} starter templates`);
-            await this.reindex();
         } catch (error) {
             this.logger.error(`startup failed: ${(error as Error).message}`);
         }
@@ -123,11 +105,7 @@ export class TemplatesService implements OnApplicationBootstrap {
 
     async list(query: { q?: string; kind?: TemplateKind; limit?: number }): Promise<TemplateSummary[]> {
         const limit = query.limit ?? 100;
-        if (query.q) {
-            const embedding = await this.embeddings.embed(query.q, 'RETRIEVAL_QUERY');
-            if (embedding) return this.similarByVector(embedding, limit, { kind: query.kind });
-            return this.searchText(query.q, query.kind, limit);
-        }
+        if (query.q) return this.searchText(query.q, query.kind, limit);
         const rows = await this.prisma.template.findMany({
             where: query.kind ? { kind: query.kind } : undefined,
             orderBy: { updatedAt: 'desc' },
@@ -152,53 +130,30 @@ export class TemplatesService implements OnApplicationBootstrap {
         return { bytes: Buffer.from(row.screenshot), type: row.screenshotType };
     }
 
-    /** Nearest neighbours of a stored template (falls back to same-kind recents without embeddings). */
-    async similar(id: string, limit = 6): Promise<TemplateSummary[]> {
-        const rows = await this.prisma.$queryRaw<RawRow[]>`
-            SELECT t.id, t.name, t.kind, t.prompt, t.dsl IS NOT NULL AS has_dsl, t.screenshot_type IS NOT NULL AS has_shot,
-                   t.created_at, t.updated_at, 1 - (t.embedding <=> s.embedding) AS score
-            FROM templates t, (SELECT embedding FROM templates WHERE id = ${id}) s
-            WHERE t.id <> ${id} AND t.embedding IS NOT NULL AND s.embedding IS NOT NULL
-            ORDER BY t.embedding <=> s.embedding
-            LIMIT ${limit}`;
-        if (rows.length > 0) return rows.map((r) => this.fromRaw(r));
-        const source = await this.prisma.template.findUnique({ where: { id }, select: { kind: true } });
-        if (!source) throw new NotFoundException('not found');
-        const sameKind = await this.prisma.template.findMany({
-            where: { id: { not: id }, kind: source.kind },
+    /**
+     * Library templates with DSL that share words with the brief; Gemini gets
+     * them as structure references. Cheap keyword overlap, no vectors.
+     */
+    async examplesFor(text: string, limit = 2): Promise<(TemplateSummary & { dsl: string })[]> {
+        const words = [...new Set(text.toLowerCase().match(/[a-z]{4,}/g) ?? [])]
+            .filter((w) => !STOP_WORDS.has(w))
+            .slice(0, 12);
+        const rows = await this.prisma.template.findMany({
+            where: { dsl: { not: null } },
             orderBy: { updatedAt: 'desc' },
-            take: limit,
-            select: SUMMARY_SELECT,
+            take: 60,
+            select: { ...SUMMARY_SELECT },
         });
-        const recents =
-            sameKind.length > 0
-                ? sameKind
-                : await this.prisma.template.findMany({
-                      where: { id: { not: id } },
-                      orderBy: { updatedAt: 'desc' },
-                      take: limit,
-                      select: SUMMARY_SELECT,
-                  });
-        return recents.map((r) => this.summary(r));
-    }
-
-    /** pgvector cosine search; `withDsl` restricts to templates Gemini can use as examples. */
-    async similarByVector(
-        embedding: number[],
-        limit: number,
-        filter: { kind?: TemplateKind; withDsl?: boolean } = {},
-    ): Promise<(TemplateSummary & { dsl: string | null })[]> {
-        const vector = JSON.stringify(embedding);
-        const rows = await this.prisma.$queryRaw<(RawRow & { dsl: string | null })[]>`
-            SELECT id, name, kind, prompt, dsl, dsl IS NOT NULL AS has_dsl, screenshot_type IS NOT NULL AS has_shot,
-                   created_at, updated_at, 1 - (embedding <=> ${vector}::vector) AS score
-            FROM templates
-            WHERE embedding IS NOT NULL
-              AND (${filter.kind ?? null}::text IS NULL OR kind = ${filter.kind ?? null})
-              AND (${filter.withDsl ?? false}::boolean = false OR dsl IS NOT NULL)
-            ORDER BY embedding <=> ${vector}::vector
-            LIMIT ${limit}`;
-        return rows.map((r) => ({ ...this.fromRaw(r), dsl: r.dsl }));
+        const scored = rows
+            .map((r) => {
+                const haystack = `${r.name} ${r.prompt ?? ''} ${r.dsl ?? ''}`.toLowerCase();
+                const score = words.reduce((sum, w) => sum + (haystack.includes(w) ? 1 : 0), 0);
+                return { row: r, score };
+            })
+            .filter((x) => x.score > 0)
+            .sort((a, b) => b.score - a.score || b.row.updatedAt.getTime() - a.row.updatedAt.getTime())
+            .slice(0, limit);
+        return scored.map(({ row }) => ({ ...this.summary(row), dsl: row.dsl as string }));
     }
 
     /* ---------- writes ---------- */
@@ -226,7 +181,6 @@ export class TemplatesService implements OnApplicationBootstrap {
                 screenshotType: shot?.type ?? null,
             },
         });
-        await this.embedTemplate(id);
         return this.get(id);
     }
 
@@ -249,7 +203,6 @@ export class TemplatesService implements OnApplicationBootstrap {
                     : { screenshot: shot ? new Uint8Array(shot.bytes) : null, screenshotType: shot?.type ?? null }),
             },
         });
-        if (input.name || input.root) await this.embedTemplate(id);
         return this.get(id);
     }
 
@@ -268,34 +221,6 @@ export class TemplatesService implements OnApplicationBootstrap {
     async remove(id: string): Promise<boolean> {
         const result = await this.prisma.template.deleteMany({ where: { id } });
         return result.count > 0;
-    }
-
-    /* ---------- embeddings ---------- */
-
-    /** (Re)computes the pgvector embedding of one template; no-op without an embeddings provider. */
-    async embedTemplate(id: string): Promise<boolean> {
-        if (!this.embeddings.enabled) return false;
-        const row = await this.prisma.template.findUnique({ where: { id }, select: { ...SUMMARY_SELECT, root: true } });
-        if (!row) return false;
-        const text = templateText(row.name, row.prompt, row.dsl, row.root as unknown as EmailNode);
-        const embedding = await this.embeddings.embed(text, 'RETRIEVAL_DOCUMENT');
-        if (!embedding) return false;
-        await this.prisma
-            .$executeRaw`UPDATE templates SET embedding = ${JSON.stringify(embedding)}::vector WHERE id = ${id}`;
-        return true;
-    }
-
-    /** Embeds templates that have no vector yet (rows written while the provider was off). */
-    async reindex(max = 50): Promise<number> {
-        if (!this.embeddings.enabled) return 0;
-        const missing = await this.prisma.$queryRaw<{ id: string }[]>`
-            SELECT id FROM templates WHERE embedding IS NULL ORDER BY updated_at DESC LIMIT ${max}`;
-        let done = 0;
-        for (const { id } of missing) {
-            if (await this.embedTemplate(id)) done += 1;
-        }
-        if (done > 0) this.logger.log(`embedded ${done} templates for pgvector search`);
-        return done;
     }
 
     /* ---------- seeding ---------- */
@@ -351,29 +276,20 @@ export class TemplatesService implements OnApplicationBootstrap {
         };
     }
 
-    private fromRaw(r: RawRow): TemplateSummary {
-        return {
-            id: r.id,
-            name: r.name,
-            kind: r.kind as TemplateKind,
-            prompt: r.prompt,
-            hasDsl: r.has_dsl ?? r.dsl != null,
-            screenshot: r.has_shot ? `/api/templates/${r.id}/screenshot` : null,
-            createdAt: new Date(r.created_at).toISOString(),
-            updatedAt: new Date(r.updated_at).toISOString(),
-            score: r.score === undefined ? undefined : Number(r.score),
-        };
-    }
-
+    /** Keyword search: every word of the query (lightly stemmed) must appear in name, prompt or DSL. */
     private async searchText(q: string, kind: TemplateKind | undefined, limit: number): Promise<TemplateSummary[]> {
+        const stems = [...new Set((q.toLowerCase().match(/[a-z0-9]{2,}/g) ?? []).map(stem))].slice(0, 8);
+        if (stems.length === 0) return [];
         const rows = await this.prisma.template.findMany({
             where: {
                 ...(kind ? { kind } : {}),
-                OR: [
-                    { name: { contains: q, mode: 'insensitive' } },
-                    { prompt: { contains: q, mode: 'insensitive' } },
-                    { dsl: { contains: q, mode: 'insensitive' } },
-                ],
+                AND: stems.map((word) => ({
+                    OR: [
+                        { name: { contains: word, mode: 'insensitive' as const } },
+                        { prompt: { contains: word, mode: 'insensitive' as const } },
+                        { dsl: { contains: word, mode: 'insensitive' as const } },
+                    ],
+                })),
             },
             orderBy: { updatedAt: 'desc' },
             take: limit,
@@ -382,3 +298,10 @@ export class TemplatesService implements OnApplicationBootstrap {
         return rows.map((r) => this.summary(r));
     }
 }
+
+/** "newsletters" → "newsletter", "sales" → "sale", "stories" → "stor" (still a substring match). */
+const stem = (word: string): string =>
+    word
+        .replace(/ies$/, 'i')
+        .replace(/(ses|xes|ches|shes)$/, (m) => m.slice(0, -2))
+        .replace(/s$/, '');

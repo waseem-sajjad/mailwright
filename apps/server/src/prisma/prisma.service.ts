@@ -15,12 +15,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     async onModuleInit(): Promise<void> {
         await this.$connect();
-        // pgvector must exist before any embedding query; harmless when present.
-        try {
-            await this.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS vector');
-        } catch (error) {
-            this.logger.warn(`could not create the vector extension: ${(error as Error).message}`);
-        }
+        this.logger.log('connected to PostgreSQL');
     }
 
     async onModuleDestroy(): Promise<void> {

@@ -83,7 +83,7 @@ const FOLLOW_UPS = [
     'Change the button text to "Get started"',
     'Suggest subject lines',
     'Make it shorter',
-    'Find similar templates',
+    'Find templates about a sale',
 ];
 
 /** Small scaled iframe so the chat shows the real email, not a mock. */
@@ -162,9 +162,6 @@ const LibraryHit: React.FC<{ template: CloudTemplate; onOpen: () => void }> = ({
                 </div>
                 <div className="truncate text-[10px] text-gray-400">
                     {template.kind}
-                    {template.score !== undefined
-                        ? ` · ${Math.round(template.score * 100)}% match`
-                        : ''}
                     {template.prompt ? ` · ${template.prompt}` : ''}
                 </div>
             </div>
@@ -337,9 +334,8 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                     </div>
                     {g.references && g.references.length > 0 ? (
                         <div className="mt-1 truncate text-[10px] text-gray-400">
-                            Inspired by{' '}
-                            {g.references.map((r) => r.name).join(', ')}{' '}
-                            (pgvector)
+                            References:{' '}
+                            {g.references.map((r) => r.name).join(', ')}
                         </div>
                     ) : null}
                     {showDsl ? <DslView dsl={g.dsl} /> : null}
@@ -598,9 +594,6 @@ export const ChatPanel: React.FC = () => {
                             {health?.engine === 'rules'
                                 ? 'rules engine · set GEMINI_API_KEY for Gemini'
                                 : null}
-                            {health?.embeddings?.ok
-                                ? ` · vectors: ${health.embeddings.model}`
-                                : ''}
                         </div>
                     </div>
                 </div>

@@ -1,12 +1,8 @@
 /**
- * What a chat message asks for. Kept as plain functions so the rules are
- * easy to test and to extend.
+ * Heuristic intent detection, used when Gemini is not configured (Gemini
+ * routes messages itself otherwise). Plain functions: easy to test and extend.
  */
-export type Intent =
-    | { kind: 'search'; query: string }
-    | { kind: 'subjects' }
-    | { kind: 'refine' }
-    | { kind: 'generate' };
+export type IntentKind = 'generate' | 'refine' | 'subjects' | 'search' | 'answer';
 
 /** "find templates about coffee", "search the library for sales", "show me saved templates". */
 export const librarySearch = (text: string): string | null => {
@@ -35,10 +31,15 @@ export const isRefinement = (text: string): boolean =>
         text.trim(),
     ) || /\b(it|this|the (header|hero|button|heading|title|coupon|footer|tone|colou?r))\b/i.test(text);
 
-export const classify = (text: string, hasContext: boolean): Intent => {
+/** A question with no email keywords wants an answer, not a template. */
+export const isQuestion = (text: string): boolean =>
+    /\?\s*$/.test(text) && !/\b(email|template|newsletter|campaign|promo|invite|announcement|receipt)\b/i.test(text);
+
+export const classify = (text: string, hasContext: boolean): { kind: IntentKind; query: string } => {
     const query = librarySearch(text);
     if (query !== null) return { kind: 'search', query };
-    if (wantsSubjects(text)) return { kind: 'subjects' };
-    if (hasContext && isRefinement(text)) return { kind: 'refine' };
-    return { kind: 'generate' };
+    if (wantsSubjects(text)) return { kind: 'subjects', query: '' };
+    if (hasContext && isRefinement(text)) return { kind: 'refine', query: '' };
+    if (isQuestion(text)) return { kind: 'answer', query: '' };
+    return { kind: 'generate', query: '' };
 };

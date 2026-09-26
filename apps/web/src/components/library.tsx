@@ -1,5 +1,4 @@
 import {
-    ArrowLeft,
     Copy,
     Download,
     ExternalLink,
@@ -9,7 +8,6 @@ import {
     Sparkles,
     Trash2,
     UploadCloud,
-    Waypoints,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -24,7 +22,6 @@ import {
     listCloudTemplates,
     saveCloudTemplate,
     screenshotUrl,
-    similarCloudTemplates,
     templateHtmlUrl,
     updateCloudTemplate,
 } from '@/utils/api';
@@ -70,16 +67,7 @@ const Card: React.FC<{
     onDuplicate: () => void;
     onDelete: () => void;
     onDownload: () => void;
-    onSimilar: () => void;
-}> = ({
-    template,
-    onOpen,
-    onRename,
-    onDuplicate,
-    onDelete,
-    onDownload,
-    onSimilar,
-}) => (
+}> = ({ template, onOpen, onRename, onDuplicate, onDelete, onDownload }) => (
     <div className="group flex flex-col overflow-hidden rounded-md border border-gray-200 bg-white transition-shadow hover:border-blue-300 hover:shadow-md">
         <button
             className="relative block aspect-[4/3] w-full cursor-pointer overflow-hidden bg-gray-100"
@@ -117,9 +105,6 @@ const Card: React.FC<{
                     className="truncate text-[11px] text-gray-400"
                     title={template.prompt ?? ''}
                 >
-                    {template.score !== undefined
-                        ? `${Math.round(template.score * 100)}% match · `
-                        : ''}
                     {template.prompt
                         ? `“${template.prompt}”`
                         : new Date(template.updatedAt).toLocaleString()}
@@ -129,7 +114,6 @@ const Card: React.FC<{
                 {(
                     [
                         ['Open', <ExternalLink size={13} key="o" />, onOpen],
-                        ['Similar', <Waypoints size={13} key="s" />, onSimilar],
                         ['Rename', <Pencil size={13} key="r" />, onRename],
                         ['Duplicate', <Copy size={13} key="c" />, onDuplicate],
                         [
@@ -171,13 +155,9 @@ export const LibraryDialog: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [filter, setFilter] = useState<Filter>('all');
     const [query, setQuery] = useState('');
-    const [sort, setSort] = useState<'recent' | 'name' | 'match'>('recent');
-    /** Server search results for the current query (semantic with Gemini, keyword otherwise). */
+    const [sort, setSort] = useState<'recent' | 'name'>('recent');
+    /** Server search results for the current query (name, prompt, DSL keywords). */
     const [hits, setHits] = useState<CloudTemplate[] | null>(null);
-    const [similarTo, setSimilarTo] = useState<{
-        source: CloudTemplate;
-        items: CloudTemplate[];
-    } | null>(null);
     const open = dialog === 'templates';
 
     const refresh = async () => {
@@ -207,11 +187,7 @@ export const LibraryDialog: React.FC = () => {
         const timer = setTimeout(async () => {
             try {
                 const found = await listCloudTemplates({ q, limit: 60 });
-                if (!cancelled) {
-                    setHits(found);
-                    if (found.some((t) => t.score !== undefined))
-                        setSort('match');
-                }
+                if (!cancelled) setHits(found);
             } catch (e) {
                 if (!cancelled) setError(errorMessage(e));
             }
@@ -223,15 +199,14 @@ export const LibraryDialog: React.FC = () => {
     }, [query]);
 
     const visible = useMemo(() => {
-        const source = similarTo ? similarTo.items : (hits ?? items);
-        return source
+        return (hits ?? items)
             .filter((t) => filter === 'all' || t.kind === filter)
-            .sort((a, b) => {
-                if (sort === 'name') return a.name.localeCompare(b.name);
-                if (sort === 'match') return (b.score ?? 0) - (a.score ?? 0);
-                return b.updatedAt.localeCompare(a.updatedAt);
-            });
-    }, [items, hits, similarTo, filter, sort]);
+            .sort((a, b) =>
+                sort === 'name'
+                    ? a.name.localeCompare(b.name)
+                    : b.updatedAt.localeCompare(a.updatedAt),
+            );
+    }, [items, hits, filter, sort]);
 
     const counts = useMemo(
         () =>
@@ -346,7 +321,7 @@ export const LibraryDialog: React.FC = () => {
                         <input
                             className="w-full rounded-xs border border-gray-300 py-1.5 pr-2 pl-7 text-xs outline-none focus:border-blue-400"
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search by meaning, name or prompt"
+                            placeholder="Search by name, prompt or content"
                             aria-label="Search templates"
                             value={query}
                         />
@@ -354,35 +329,15 @@ export const LibraryDialog: React.FC = () => {
                     <select
                         className="rounded-xs border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-600"
                         onChange={(e) =>
-                            setSort(
-                                e.target.value as 'recent' | 'name' | 'match',
-                            )
+                            setSort(e.target.value as 'recent' | 'name')
                         }
                         aria-label="Sort"
                         value={sort}
                     >
                         <option value="recent">Most recent</option>
                         <option value="name">Name A–Z</option>
-                        <option value="match">Best match</option>
                     </select>
                 </div>
-                {similarTo ? (
-                    <div className="flex items-center gap-2 border-b border-violet-200 bg-violet-50 px-4 py-1.5 text-xs text-violet-900">
-                        <button
-                            className="flex cursor-pointer items-center gap-1 rounded px-1 hover:bg-violet-100"
-                            onClick={() => setSimilarTo(null)}
-                            type="button"
-                        >
-                            <ArrowLeft size={12} /> All templates
-                        </button>
-                        <span className="truncate">
-                            Templates similar to “{similarTo.source.name}”
-                            {similarTo.items.some((t) => t.score !== undefined)
-                                ? ' (pgvector)'
-                                : ' (same kind, most recent)'}
-                        </span>
-                    </div>
-                ) : null}
 
                 <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
                     {error ? (
@@ -444,16 +399,6 @@ export const LibraryDialog: React.FC = () => {
                                             exportHtml(full.root),
                                             'text/html',
                                         );
-                                    })
-                                }
-                                onSimilar={() =>
-                                    guard(async () => {
-                                        const found =
-                                            await similarCloudTemplates(t.id);
-                                        setSimilarTo({
-                                            source: t,
-                                            items: found,
-                                        });
                                     })
                                 }
                                 onOpen={() => openTemplate(t)}

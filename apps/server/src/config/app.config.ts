@@ -9,14 +9,7 @@ export const appConfig = registerAs('app', () => ({
     gemini: {
         apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? '',
         model: process.env.GEMINI_MODEL ?? 'models/gemini-3.8-flash',
-        embeddingModel: process.env.GEMINI_EMBEDDING_MODEL ?? 'gemini-embedding-001',
         timeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 60000),
-    },
-    embeddings: {
-        /** ollama (local, default) | gemini | off */
-        provider: (process.env.EMBEDDINGS_PROVIDER ?? 'ollama') as 'ollama' | 'gemini' | 'off',
-        ollamaUrl: (process.env.OLLAMA_URL ?? 'http://127.0.0.1:11434').replace(/\/$/, ''),
-        ollamaModel: process.env.OLLAMA_EMBED_MODEL ?? 'nomic-embed-text:latest',
     },
     corsOrigin: (process.env.CORS_ORIGIN ?? '')
         .split(',')

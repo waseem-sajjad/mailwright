@@ -9,7 +9,7 @@ import { newId } from '../common/ids';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { type TemplateSummary, TemplatesService } from '../templates/templates.service';
-import { classify } from './intent';
+import { classify as heuristicIntent } from './intent';
 
 /** The brief, the current DSL and the applied instructions the next edit starts from. */
 export interface ChatContext {
@@ -191,7 +191,8 @@ export class ChatService {
 
         const user = await this.append(id, { role: 'user', text });
         if (conversation.title === 'New chat' && conversation.messages.length === 0) {
-            await this.prisma.conversation.update({ where: { id }, data: { title: this.titleFrom(text) } });
+            const title = (await this.ai.title(text)) ?? this.titleFrom(text);
+            await this.prisma.conversation.update({ where: { id }, data: { title } });
         }
 
         let assistant: ChatMessage;
@@ -216,18 +217,23 @@ export class ChatService {
         context: ChatContext | null,
         previous: string[],
     ): Promise<ChatMessage> {
-        const intent = classify(text, context !== null);
+        const intent = await this.ai.classify(text, context !== null, () => heuristicIntent(text, context !== null));
         if (intent.kind === 'search') {
-            const found = await this.templates.list({ q: intent.query || undefined, limit: 6 });
+            const query = intent.query || (heuristicIntent(text, context !== null).query ?? '');
+            const found = await this.templates.list({ q: query || undefined, limit: 6 });
             const plural = found.length === 1 ? '' : 's';
             return this.append(id, {
                 role: 'assistant',
                 text:
                     found.length > 0
-                        ? `Here ${found.length === 1 ? 'is' : 'are'} ${found.length} template${plural} from the library${intent.query ? ` for “${intent.query}”` : ''}:`
-                        : `Nothing in the library matches “${intent.query}”.`,
+                        ? `Here ${found.length === 1 ? 'is' : 'are'} ${found.length} template${plural} from the library${query ? ` for “${query}”` : ''}:`
+                        : `Nothing in the library matches “${query}”.`,
                 payload: { templates: found },
             });
+        }
+        if (intent.kind === 'answer') {
+            const reply = await this.ai.answer(text, context, previous);
+            return this.append(id, { role: 'assistant', text: reply });
         }
         if (intent.kind === 'subjects') {
             const subjects = await this.ai.subjects(
@@ -253,7 +259,7 @@ export class ChatService {
             await this.setContext(id, { prompt: context.prompt, dsl: result.dsl, steps: [...context.steps, text] });
             return this.append(id, {
                 role: 'assistant',
-                text: result.applied.length > 0 ? result.applied.join('. ') : 'Updated the template.',
+                text: result.summary,
                 generationId: result.id,
                 payload: { applied: result.applied, references: result.references, model: result.model },
             });
@@ -262,7 +268,7 @@ export class ChatService {
         await this.setContext(id, { prompt: text, dsl: result.dsl, steps: [] });
         return this.append(id, {
             role: 'assistant',
-            text: `Here's a first draft of “${result.name}”. Tell me what to change, or apply it to the editor.`,
+            text: result.summary,
             generationId: result.id,
             payload: { references: result.references, model: result.model },
         });
