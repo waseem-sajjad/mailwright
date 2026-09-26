@@ -23,7 +23,7 @@ BLOCKS (arguments in double quotes; URLs unquoted after the arguments)
   heading "Text"
   text "A paragraph. Merge tags such as {{first_name}} are allowed."
   button "Label" https://example.com
-  image "Alt text" https://example.com/image.jpg   (URL optional; always write meaningful alt text)
+  image "Alt text" https://placehold.co/600x320/1d4ed8/ffffff?text=Hero   (always write meaningful alt text; unless the brief gives real image URLs use placehold.co with the brand hex and a 1-3 word label)
   divider
   spacer 24
   list "First item" "Second item" "Third item"
@@ -31,7 +31,7 @@ BLOCKS (arguments in double quotes; URLs unquoted after the arguments)
   social
   footer "Company name" "Postal address line"
   icons "🚀 Title|Short description" "✓ Title|Short description" "★ Title|Short description"
-  product "Product name" "$19.00" "$29.00" https://example.com/product.jpg   (price, optional old price, optional image)
+  product "Product name" "$19.00" "$29.00" https://placehold.co/400x400/1d4ed8/ffffff?text=Product   (price, optional old price, optional image)
   quote "Quote text" "Author" "Role"
   coupon "SAVE20" "Use code at checkout" "Valid until Sunday"
   callout "Title" "Text"

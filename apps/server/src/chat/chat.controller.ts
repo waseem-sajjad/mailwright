@@ -30,7 +30,7 @@ export class ChatController {
     }
 
     /** One turn: stores the user message, answers it, returns both plus the updated conversation. */
-    @Throttle({ ai: { limit: 20, ttl: 600_000 } })
+    @Throttle({ default: { limit: 20, ttl: 600_000 } })
     @Post(':id/messages')
     send(@Param('id', id()) conversationId: string, @Body(new ZodValidationPipe(sendBody)) body: SendBody) {
         return this.chat.send(conversationId, body.text, body.options);

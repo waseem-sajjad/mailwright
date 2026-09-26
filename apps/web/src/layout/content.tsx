@@ -7,7 +7,7 @@ export const Content: React.FC<React.ComponentPropsWithRef<'div'>> = ({
     className,
     ...props
 }) => (
-    <section className="min-w-0 flex-1">
+    <section className="flex min-w-0 flex-1 flex-col">
         <Header />
         <div
             className={cn(

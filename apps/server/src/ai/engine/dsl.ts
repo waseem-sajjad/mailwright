@@ -153,6 +153,25 @@ const splitPair = (value: string, separator = '|'): [string, string] => {
     return [value.slice(0, index).trim(), value.slice(index + 1).trim()];
 };
 
+/**
+ * Model output uses example.com for images it cannot know. Those links are
+ * dead, so they become branded placeholders that render in previews and
+ * exports (real URLs pass through untouched).
+ */
+const placeholderImage = (url: string | undefined, label: string, size: string, brand: RGBColor): string => {
+    if (url && !/^https?:\/\/(www\.)?example\.(com|org|net)\b/i.test(url)) return url;
+    const hex = [brand.r, brand.g, brand.b].map((c) => c.toString(16).padStart(2, '0')).join('');
+    const text = encodeURIComponent(
+        label
+            .replace(/[^\w\s-]/g, '')
+            .trim()
+            .split(/\s+/)
+            .slice(0, 4)
+            .join(' ') || 'Image',
+    );
+    return `https://placehold.co/${size}/${hex}/ffffff?text=${text}`;
+};
+
 const blockToNode = (block: DslBlock, theme: Theme): EmailNode | null => {
     const { kind, args, url } = block;
     const white = rgb(255, 255, 255);
@@ -179,7 +198,7 @@ const blockToNode = (block: DslBlock, theme: Theme): EmailNode | null => {
             });
         case 'image':
             return setText(createContent('Image'), {
-                src: url ?? '',
+                src: placeholderImage(url, args[0] ?? 'Image', '600x320', theme.brand),
                 alt: args[0] ?? 'Image',
                 padding: { top: 0, right: 0, bottom: 0, left: 0 },
             });
@@ -230,7 +249,7 @@ const blockToNode = (block: DslBlock, theme: Theme): EmailNode | null => {
                 title: args[0] ?? 'Product',
                 price: args[1] ?? '$0.00',
                 oldPrice: args[2] ?? '',
-                image: url ?? '',
+                image: placeholderImage(url, args[0] ?? 'Product', '400x400', theme.brand),
                 buttonBackground: theme.brand,
             });
         case 'quote':

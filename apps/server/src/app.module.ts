@@ -24,11 +24,9 @@ import { TemplatesModule } from './templates/templates.module';
             useFactory: (config: AppConfig) =>
                 existsSync(config.webDist) ? [{ rootPath: config.webDist, exclude: ['/api/{*path}'] }] : [],
         }),
-        // Public site: 120 requests/min per IP overall, 20 model calls per 10 min (`ai` bucket).
-        ThrottlerModule.forRoot([
-            { name: 'default', ttl: 60_000, limit: 120 },
-            { name: 'ai', ttl: 600_000, limit: 20 },
-        ]),
+        // Public site: 300 requests/min per IP by default; AI routes override this to 20 per
+        // 10 minutes (@Throttle), read-only gallery and health routes opt out (@SkipThrottle).
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
         PrismaModule,
         ProvidersModule,
         TemplatesModule,

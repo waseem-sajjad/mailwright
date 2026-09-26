@@ -282,26 +282,26 @@ export const Header: React.FC = () => {
         useSettings();
 
     return (
-        <header className="flex h-10 items-center justify-between border-b border-gray-300 bg-hover">
-            <section className="flex h-full flex-1 items-center gap-1 px-2">
+        <header className="flex h-10 min-w-0 items-center justify-between overflow-hidden border-b border-gray-300 bg-hover">
+            <section className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden px-2">
                 <a
-                    className="mr-1 flex items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight text-gray-800 hover:bg-gray-100"
+                    className="mr-1 flex shrink-0 items-center gap-1.5 rounded px-1.5 py-1 text-sm font-semibold tracking-tight text-gray-800 hover:bg-gray-100"
                     href="/"
                     title="Mailwright"
                 >
                     <img className="size-5" src="/logo.svg" alt="" />
-                    <span className="hidden md:inline">Mailwright</span>
+                    <span className="hidden xl:inline">Mailwright</span>
                 </a>
-                <span className="mx-1 hidden h-5 w-px bg-gray-300 md:inline" />
+                <span className="mx-1 hidden h-5 w-px bg-gray-300 xl:inline" />
                 <input
-                    className="w-56 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-gray-800 outline-none hover:border-gray-300 focus:border-blue-400 focus:bg-white"
+                    className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-gray-800 outline-none hover:border-gray-300 focus:border-blue-400 focus:bg-white 2xl:max-w-64"
                     onChange={(e) => setName(e.target.value)}
                     aria-label="Template name"
                     placeholder="Untitled email"
                     value={name}
                 />
                 {savedAt ? (
-                    <span className="hidden text-[11px] text-gray-400 lg:inline">
+                    <span className="hidden text-[11px] whitespace-nowrap text-gray-400 min-[1800px]:inline">
                         Saved{' '}
                         {new Date(savedAt).toLocaleTimeString([], {
                             hour: '2-digit',
@@ -311,7 +311,7 @@ export const Header: React.FC = () => {
                 ) : null}
             </section>
 
-            <section className="flex h-full flex-1 items-center justify-center">
+            <section className="flex h-full shrink-0 items-center justify-center">
                 <ViewButton
                     icon={<Monitor size={18} />}
                     label="Desktop view"
@@ -344,13 +344,13 @@ export const Header: React.FC = () => {
                     type="button"
                 >
                     {showHidden ? <Eye size={13} /> : <EyeOff size={13} />}
-                    <span className="hidden xl:inline">
+                    <span className="hidden whitespace-nowrap 2xl:inline">
                         {showHidden ? 'Showing hidden' : 'Hidden collapsed'}
                     </span>
                 </button>
             </section>
 
-            <section className="flex h-full flex-1 items-center justify-end gap-1.5 px-3">
+            <section className="flex h-full shrink-0 items-center justify-end gap-1.5 px-3">
                 <History />
                 <span className="mx-1 h-5 w-px bg-gray-300" />
                 <FileMenu />

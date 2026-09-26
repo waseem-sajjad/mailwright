@@ -1,4 +1,5 @@
 import { Controller, Get, Header, Inject, Param, Query, Res } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 
 import { exportHtml } from '@mailwright/shared/utils';
@@ -10,7 +11,12 @@ import { TemplatesService } from './templates.service';
 
 const id = () => new ZodValidationPipe(idParam);
 
-/** Read-only gallery: the site is public, so nothing here writes. Templates come from the seed (see gallery.json). */
+/**
+ * Read-only gallery: the site is public, so nothing here writes. Templates come
+ * from the seed (see gallery.json). Cheap reads are exempt from rate limits:
+ * the gallery renders 20+ thumbnails per open.
+ */
+@SkipThrottle()
 @Controller('api/templates')
 export class TemplatesController {
     constructor(@Inject(TemplatesService) private readonly templates: TemplatesService) {}

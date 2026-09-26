@@ -17,7 +17,7 @@ import {
 } from './schemas';
 
 /** Model calls are rate limited per IP (see AppModule) because the site is public. */
-@Throttle({ ai: { limit: 20, ttl: 600_000 } })
+@Throttle({ default: { limit: 20, ttl: 600_000 } })
 @Controller('api/ai')
 export class AiController {
     constructor(@Inject(AiService) private readonly ai: AiService) {}
