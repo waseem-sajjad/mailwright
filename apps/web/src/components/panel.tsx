@@ -101,10 +101,6 @@ const Blocks: React.FC = () => (
                         />
                     ))}
                 </div>
-                <p className="px-3 pb-3 text-[11px] text-gray-400">
-                    Drop a Row on the canvas. Drop a Column onto a row to add
-                    one.
-                </p>
             </Collapsible.Content>
         </Collapsible.Item>
         <Collapsible.Item value="content">
@@ -133,9 +129,6 @@ const Blocks: React.FC = () => (
                         />
                     ))}
                 </div>
-                <p className="px-3 pb-3 text-[11px] text-gray-400">
-                    Ready-made pieces built from email-safe tables.
-                </p>
             </Collapsible.Content>
         </Collapsible.Item>
     </Collapsible>
