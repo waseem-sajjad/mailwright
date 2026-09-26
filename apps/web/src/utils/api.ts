@@ -11,8 +11,16 @@ export const api = axios.create({
 export interface AiOptions {
     type?: string;
     tone?: string;
+    /** "large" asks for 10 to 14 sections instead of 5 to 9. */
+    size?: 'standard' | 'large';
     brand?: string;
     company?: string;
+}
+
+/** A library template pgvector found similar to the brief and showed to Gemini. */
+export interface Reference {
+    id: string;
+    name: string;
 }
 
 export interface Generation {
@@ -23,6 +31,7 @@ export interface Generation {
     dsl: string;
     root: CanvasNode;
     html: string;
+    references: Reference[];
 }
 
 export interface HistoryItem {
@@ -40,15 +49,25 @@ export interface CloudTemplate {
     name: string;
     kind: TemplateKind;
     prompt: string | null;
+    /** Came with DSL (AI result or large starter), so Gemini can learn from it. */
+    hasDsl: boolean;
     screenshot: string | null;
     createdAt: string;
     updatedAt: string;
+    /** Cosine similarity 0..1, present on vector search results. */
+    score?: number;
 }
 
 export interface Health {
     ok: boolean;
     engine: 'gemini' | 'rules';
     model: string | null;
+    /** pgvector embeddings provider (Ollama by default). */
+    embeddings?: {
+        provider: 'ollama' | 'gemini' | 'off';
+        model: string | null;
+        ok: boolean;
+    };
 }
 
 export const errorMessage = (error: unknown): string => {
@@ -130,8 +149,16 @@ export const aiHistoryItem = async (
 ): Promise<Generation & { prompt: string }> =>
     (await api.get(`/api/ai/history/${id}`)).data;
 
-export const listCloudTemplates = async (): Promise<CloudTemplate[]> =>
-    (await api.get<CloudTemplate[]>('/api/templates')).data;
+/** `q` searches by meaning (pgvector) when the server has Gemini, by keyword otherwise. */
+export const listCloudTemplates = async (
+    params: { q?: string; kind?: TemplateKind; limit?: number } = {},
+): Promise<CloudTemplate[]> =>
+    (await api.get<CloudTemplate[]>('/api/templates', { params })).data;
+
+export const similarCloudTemplates = async (
+    id: string,
+): Promise<CloudTemplate[]> =>
+    (await api.get<CloudTemplate[]>(`/api/templates/${id}/similar`)).data;
 
 export const getCloudTemplate = async (
     id: string,
@@ -142,6 +169,7 @@ export const saveCloudTemplate = async (input: {
     name: string;
     root: CanvasNode;
     prompt?: string;
+    dsl?: string;
     screenshot?: string;
 }): Promise<CloudTemplate> =>
     (await api.post<CloudTemplate>('/api/templates', input)).data;

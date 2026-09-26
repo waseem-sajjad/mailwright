@@ -1,8 +1,10 @@
 import {
+    BookMarked,
     Bot,
     Check,
     Code2,
     Copy,
+    ExternalLink,
     Loader2,
     RotateCcw,
     Send,
@@ -19,9 +21,14 @@ import { Button, SelectBox } from '@/components/ui';
 import {
     aiFeedback,
     aiHealth,
+    type CloudTemplate,
     copyToClipboard,
     exportHtml,
+    getCloudTemplate,
     type Health,
+    saveCloudTemplate,
+    screenshotUrl,
+    templateHtmlUrl,
 } from '@/utils/api-bridge';
 import { cn, confirmAction } from '@/utils';
 
@@ -47,6 +54,11 @@ const TONES = [
     { value: 'urgent', label: 'Urgent' },
 ];
 
+const SIZES = [
+    { value: 'standard', label: 'Standard length' },
+    { value: 'large', label: 'Large (10–14 sections)' },
+];
+
 const STARTERS = [
     'Welcome email for Bluebird Coffee, a friendly cafe',
     'Flash sale for Northwind, 30% off, urgent',
@@ -61,6 +73,7 @@ const FOLLOW_UPS = [
     'Change the button text to "Get started"',
     'Suggest subject lines',
     'Make it shorter',
+    'Find similar templates',
 ];
 
 /** Small scaled iframe so the chat shows the real email, not a mock. */
@@ -109,14 +122,96 @@ const DslView: React.FC<{ dsl: string }> = ({ dsl }) => {
     );
 };
 
+/** A library template found by the chat, with its stored screenshot or a live render. */
+const LibraryHit: React.FC<{ template: CloudTemplate; onOpen: () => void }> = ({
+    template,
+    onOpen,
+}) => {
+    const shot = screenshotUrl(template);
+    return (
+        <li className="flex items-center gap-2 rounded border border-gray-200 bg-white p-1.5">
+            <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded bg-gray-100">
+                {shot ? (
+                    <img
+                        className="h-full w-full object-cover object-top"
+                        src={shot}
+                        alt=""
+                    />
+                ) : (
+                    <iframe
+                        className="pointer-events-none absolute top-0 left-0 h-[500%] w-[500%] origin-top-left scale-[0.2] border-0"
+                        src={templateHtmlUrl(template)}
+                        title={template.name}
+                        sandbox=""
+                    />
+                )}
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-semibold text-gray-800">
+                    {template.name}
+                </div>
+                <div className="truncate text-[10px] text-gray-400">
+                    {template.kind}
+                    {template.score !== undefined
+                        ? ` · ${Math.round(template.score * 100)}% match`
+                        : ''}
+                    {template.prompt ? ` · ${template.prompt}` : ''}
+                </div>
+            </div>
+            <button
+                className="cursor-pointer rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                aria-label={`Open ${template.name}`}
+                onClick={onOpen}
+                title="Open in the editor"
+                type="button"
+            >
+                <ExternalLink size={13} />
+            </button>
+        </li>
+    );
+};
+
 const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
     const { load, root } = useEmail();
     const { setDialog, notify, setPreviewHtml } = useSettings();
     const rate = useChat((s) => s.rate);
     const [copied, setCopied] = useState<string | null>(null);
     const [showDsl, setShowDsl] = useState(false);
+    const [saved, setSaved] = useState<string | null>(null);
     const mine = message.role === 'user';
     const g = message.generation;
+    const context = useChat((s) => s.context);
+
+    const saveToLibrary = async () => {
+        if (!g || saved) return;
+        try {
+            const row = await saveCloudTemplate({
+                name: g.name,
+                root: g.root,
+                prompt: context?.prompt ?? message.text,
+                dsl: g.dsl,
+            });
+            setSaved(row.id);
+            notify(`Saved “${row.name}” to the library`);
+        } catch {
+            notify('Could not save to the library', 'info');
+        }
+    };
+
+    const openTemplate = async (t: CloudTemplate) => {
+        if (
+            root.children.length > 0 &&
+            !confirmAction(`Replace the current email with “${t.name}”?`)
+        )
+            return;
+        try {
+            const full = await getCloudTemplate(t.id);
+            load(full.root, full.name);
+            notify(`Opened “${full.name}”`);
+        } catch {
+            notify('Could not open that template', 'info');
+        }
+    };
 
     const apply = () => {
         if (!g) return;
@@ -230,6 +325,13 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                             </button>
                         </div>
                     </div>
+                    {g.references && g.references.length > 0 ? (
+                        <div className="mt-1 truncate text-[10px] text-gray-400">
+                            Inspired by{' '}
+                            {g.references.map((r) => r.name).join(', ')}{' '}
+                            (pgvector)
+                        </div>
+                    ) : null}
                     {showDsl ? <DslView dsl={g.dsl} /> : null}
                     <div className="mt-2 flex flex-wrap gap-1.5">
                         <Button onClick={apply} variant="primary" size="sm">
@@ -242,8 +344,29 @@ const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
                         >
                             Add rows below
                         </Button>
+                        <Button
+                            onClick={saveToLibrary}
+                            title="Store this template (with its DSL) in the library"
+                            disabled={saved !== null}
+                            size="sm"
+                        >
+                            <BookMarked size={12} />{' '}
+                            {saved ? 'Saved' : 'Save to library'}
+                        </Button>
                     </div>
                 </div>
+            ) : null}
+
+            {message.templates && message.templates.length > 0 ? (
+                <ul className="flex w-full flex-col gap-1">
+                    {message.templates.map((t) => (
+                        <LibraryHit
+                            onOpen={() => openTemplate(t)}
+                            template={t}
+                            key={t.id}
+                        />
+                    ))}
+                </ul>
             ) : null}
 
             {message.subjects ? (
@@ -355,6 +478,9 @@ export const ChatPanel: React.FC = () => {
                             {health?.engine === 'rules'
                                 ? 'rules engine · set GEMINI_API_KEY for Gemini'
                                 : null}
+                            {health?.embeddings?.ok
+                                ? ` · vectors: ${health.embeddings.model}`
+                                : ''}
                         </div>
                     </div>
                 </div>
@@ -455,7 +581,7 @@ export const ChatPanel: React.FC = () => {
                         </button>
                     ))}
                 </div>
-                <div className="mb-2 grid grid-cols-2 gap-1.5">
+                <div className="mb-2 grid grid-cols-3 gap-1.5">
                     <SelectBox
                         className="w-full"
                         onChange={(type) => setOptions({ type })}
@@ -467,6 +593,14 @@ export const ChatPanel: React.FC = () => {
                         onChange={(tone) => setOptions({ tone })}
                         options={TONES}
                         value={options.tone ?? 'auto'}
+                    />
+                    <SelectBox
+                        className="w-full"
+                        onChange={(size) =>
+                            setOptions({ size: size as 'standard' | 'large' })
+                        }
+                        options={SIZES}
+                        value={options.size ?? 'standard'}
                     />
                 </div>
                 <div className="flex items-end gap-1.5">

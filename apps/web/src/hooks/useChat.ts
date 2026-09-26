@@ -1,8 +1,19 @@
 import { create } from 'zustand';
 
 import type { CanvasNode } from '@/types';
-import type { AiOptions, Generation, SubjectIdeas } from '@/utils/api';
-import { aiGenerate, aiRefine, aiSubjects, errorMessage } from '@/utils/api';
+import type {
+    AiOptions,
+    CloudTemplate,
+    Generation,
+    SubjectIdeas,
+} from '@/utils/api';
+import {
+    aiGenerate,
+    aiRefine,
+    aiSubjects,
+    errorMessage,
+    listCloudTemplates,
+} from '@/utils/api';
 
 export interface ChatMessage {
     id: string;
@@ -12,6 +23,8 @@ export interface ChatMessage {
     /** A generated or refined template attached to an assistant reply. */
     generation?: Generation & { applied?: string[]; rating?: 1 | -1 | 0 };
     subjects?: SubjectIdeas;
+    /** Library templates found for a "find templates about…" message. */
+    templates?: CloudTemplate[];
     error?: boolean;
 }
 
@@ -60,13 +73,17 @@ const load = (): Pick<ChatState, 'messages' | 'context' | 'options'> => {
             context: parsed.context
                 ? { ...parsed.context, steps: parsed.context.steps ?? [] }
                 : null,
-            options: parsed.options ?? { type: 'auto', tone: 'auto' },
+            options: parsed.options ?? {
+                type: 'auto',
+                tone: 'auto',
+                size: 'standard',
+            },
         };
     } catch {
         return {
             messages: [],
             context: null,
-            options: { type: 'auto', tone: 'auto' },
+            options: { type: 'auto', tone: 'auto', size: 'standard' },
         };
     }
 };
@@ -78,6 +95,27 @@ const isRefinement = (text: string): boolean =>
     /\b(it|this|the (header|hero|button|heading|title|coupon|footer|tone|colou?r))\b/i.test(
         text,
     );
+
+/** "find templates about coffee", "search the library for sales", "similar templates to a webinar invite". */
+const librarySearch = (text: string): string | null => {
+    if (
+        !/^(find|search|show( me)?|look( up| for)?|list|any)\b/i.test(
+            text.trim(),
+        ) ||
+        !/\b(templates?|library|saved)\b/i.test(text)
+    )
+        return null;
+    return text
+        .replace(
+            /^(find|search( for)?|show( me)?|look( up| for)?|list|any)\s+/i,
+            '',
+        )
+        .replace(/\b(me|some|all|the|my|our)\b\s*/gi, '')
+        .replace(/\b(in|from)\s+(the\s+|my\s+)?library\b/gi, '')
+        .replace(/\b(saved\s+)?templates?\b/gi, '')
+        .replace(/\b(about|for|like|similar to|on)\b/i, '')
+        .trim();
+};
 
 const wantsSubjects = (text: string): boolean =>
     /\b(subject( line)?s?|preheaders?)\b/i.test(text) &&
@@ -124,6 +162,21 @@ export const useChat = create<ChatState>((set, get) => ({
             .map((m) => m.text)
             .slice(-HISTORY_LIMIT);
         try {
+            const search = librarySearch(text);
+            if (search !== null) {
+                const found = await listCloudTemplates({
+                    q: search || undefined,
+                    limit: 6,
+                });
+                reply({
+                    text:
+                        found.length > 0
+                            ? `Here ${found.length === 1 ? 'is' : 'are'} ${found.length} template${found.length === 1 ? '' : 's'} from the library${search ? ` for “${search}”` : ''}:`
+                            : `Nothing in the library matches “${search}”.`,
+                    templates: found,
+                });
+                return;
+            }
             if (wantsSubjects(text)) {
                 const subjects = await aiSubjects(
                     text,
