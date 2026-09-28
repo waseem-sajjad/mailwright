@@ -93,7 +93,8 @@ Clients differ, and the exporter plus the pre-flight check cover both camps:
   designed dark block (`darkModeCss()` in `packages/shared/src/utils/export.ts`)
   keyed on classes the renderers add: `mw-page`, `mw-row-light`,
   `mw-cbg-light`, `mw-text-dark`, `mw-line-light`. The same rules are
-  repeated under `[data-ogsc]` / `[data-ogsb]` for Outlook.com. Brand-coloured
+  repeated under `[data-ogsc]` / `[data-ogsb]` for Outlook.com (every selector
+  in a comma list gets the prefix; a bare `.mw-page` would apply everywhere). Brand-coloured
   bands and buttons are left alone on purpose. New renderers that print text
   colours must call `darkTextClass()`; new backgrounds use `lightBgClass()`.
 - **Ignores everything and inverts** (Gmail web/iOS/Android, Outlook for
@@ -104,6 +105,9 @@ Clients differ, and the exporter plus the pre-flight check cover both camps:
   darkened, dark text lightened), plus a mid-tone text warning and an advisory
   for images on light backgrounds (transparent logos). Fix those by changing
   colours, not CSS.
+- Previews and thumbnails must pin a scheme with `forceColorScheme(html, 'light' | 'dark')`:
+  an iframe follows the viewer's operating system otherwise. The gallery asks the
+  server with `?scheme=light`.
 - The Preview dialog has Light / Dark / Inverted: "Dark" forces the designed
   block on (`@media all`), "Inverted" applies `filter: invert(1) hue-rotate(180deg)`
   with images re-inverted, matching how those clients treat images.

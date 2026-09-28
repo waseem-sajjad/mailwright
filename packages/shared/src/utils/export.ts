@@ -667,21 +667,24 @@ const minifyHtml = (html: string): string =>
 /** Designed dark theme for clients that honour prefers-color-scheme, plus Outlook.com's data-ogsc/data-ogsb hooks. */
 const darkModeCss = (canvas: CanvasProperties): string => {
     const link = rgbaToCss(lighten(canvas.linkColor, 0.35));
-    const rules = [
-        'body, .mw-page { background-color: #0b0d12 !important; }',
-        '.mw-row-light { background-color: #12151c !important; }',
-        '.mw-cbg-light { background-color: #1a1e27 !important; }',
-        '.mw-text-dark, .mw-text-dark * { color: #e6e8ee !important; }',
-        `.mw-text-dark a { color: ${link} !important; }`,
-        '.mw-line-light { border-top-color: #3a3f4b !important; }',
+    // [selectors, declarations]; selectors are prefixed one by one for the Outlook.com variants.
+    const rules: [string[], string][] = [
+        [['body', '.mw-page'], 'background-color: #0b0d12 !important;'],
+        [['.mw-row-light'], 'background-color: #12151c !important;'],
+        [['.mw-cbg-light'], 'background-color: #1a1e27 !important;'],
+        [['.mw-text-dark', '.mw-text-dark *'], 'color: #e6e8ee !important;'],
+        [['.mw-text-dark a'], `color: ${link} !important;`],
+        [['.mw-line-light'], 'border-top-color: #3a3f4b !important;'],
     ];
+    const rule = (selectors: string[], declarations: string, prefix = '') =>
+        `${selectors.map((sel) => (prefix ? `${prefix} ${sel}` : sel)).join(', ')} { ${declarations} }`;
     return [
         '@media (prefers-color-scheme: dark) {',
-        ...rules.map((r) => `  ${r}`),
+        ...rules.map(([sel, decl]) => `  ${rule(sel, decl)}`),
         '}',
         // Outlook.com and the new Outlook apps expose dark mode through these attributes.
-        ...rules.map((r) => `[data-ogsc] ${r}`),
-        ...rules.map((r) => `[data-ogsb] ${r}`),
+        ...rules.map(([sel, decl]) => rule(sel, decl, '[data-ogsc]')),
+        ...rules.map(([sel, decl]) => rule(sel, decl, '[data-ogsb]')),
     ].join('\n');
 };
 
@@ -767,3 +770,19 @@ export const exportJson = (root: CanvasNode, name: string): string =>
         null,
         2,
     );
+
+/**
+ * Pins an export to one colour scheme for previews and thumbnails. Inboxes
+ * decide for themselves, but an iframe in the editor follows the viewer's
+ * operating system, so "light" must not depend on it.
+ */
+export const forceColorScheme = (html: string, scheme: 'light' | 'dark'): string => {
+    if (scheme === 'dark') {
+        return html.replace(/@media \(prefers-color-scheme: dark\)/g, '@media all');
+    }
+    return html
+        .replace(/@media \(prefers-color-scheme: dark\)/g, '@media not all')
+        .replace(/color-scheme: light dark;/g, 'color-scheme: light;')
+        .replace(/supported-color-schemes: light dark;/g, 'supported-color-schemes: light;')
+        .replace(/content="light dark"/g, 'content="light"');
+};

@@ -28,7 +28,7 @@ import {
     screenshotUrl,
     templateHtmlUrl,
 } from '@/utils/api-bridge';
-import { cn, confirmAction } from '@/utils';
+import { cn, confirmAction, forceColorScheme } from '@/utils';
 
 const TYPES = [
     { value: 'auto', label: 'Any type' },
@@ -88,7 +88,7 @@ const Thumb: React.FC<{ html: string; onClick: () => void }> = ({
         <iframe
             className="pointer-events-none absolute top-0 left-0 h-[400%] w-[400%] origin-top-left scale-[0.25] border-0"
             title="Template preview"
-            srcDoc={html}
+            srcDoc={forceColorScheme(html, 'light')}
             sandbox=""
         />
     </button>

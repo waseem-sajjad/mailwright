@@ -136,7 +136,7 @@ export const getCloudTemplate = async (
     (await api.get(`/api/templates/${id}`)).data;
 
 export const templateHtmlUrl = (template: CloudTemplate): string =>
-    `${api.defaults.baseURL ?? ''}/api/templates/${template.id}/html?v=${encodeURIComponent(template.updatedAt)}`;
+    `${api.defaults.baseURL ?? ''}/api/templates/${template.id}/html?scheme=light&v=${encodeURIComponent(template.updatedAt)}`;
 
 export const screenshotUrl = (template: CloudTemplate): string | null =>
     template.screenshot

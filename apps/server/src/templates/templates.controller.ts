@@ -2,7 +2,7 @@ import { Controller, Get, Header, Inject, Param, Query, Res } from '@nestjs/comm
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 
-import { exportHtml } from '@mailwright/shared/utils';
+import { exportHtml, forceColorScheme } from '@mailwright/shared/utils';
 
 import { idParam } from '../ai/schemas';
 import { ZodValidationPipe } from '../common/zod.pipe';
@@ -39,9 +39,15 @@ export class TemplatesController {
         res.type(shot.type).send(shot.bytes);
     }
 
+    /** `?scheme=light|dark` pins the colour scheme (thumbnails); otherwise the inbox decides. */
     @Get(':id/html')
-    async html(@Param('id', id()) templateId: string, @Res() res: Response) {
+    async html(
+        @Param('id', id()) templateId: string,
+        @Query('scheme') scheme: string | undefined,
+        @Res() res: Response,
+    ) {
         const row = await this.templates.get(templateId);
-        res.type('html').send(exportHtml(row.root));
+        const html = exportHtml(row.root);
+        res.type('html').send(scheme === 'light' || scheme === 'dark' ? forceColorScheme(html, scheme) : html);
     }
 }

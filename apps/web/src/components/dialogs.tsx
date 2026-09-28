@@ -21,6 +21,7 @@ import {
     downloadFile,
     exportHtml,
     exportJson,
+    forceColorScheme,
     slugify,
 } from '@/utils';
 
@@ -60,26 +61,22 @@ const Segmented = <T extends string>({
 type Scheme = 'light' | 'dark' | 'inverted';
 
 /**
- * Rewrites the export so the sandboxed iframe shows what a dark-mode inbox
- * would: "dark" forces the designed prefers-color-scheme block on (what
- * Apple Mail and Outlook.com do), "inverted" applies the blunt colour
- * inversion Gmail and Outlook mobile perform (images are re-inverted, as
- * those clients leave them alone).
+ * What a dark-mode inbox would show. "light" and "dark" pin the designed
+ * schemes (the iframe would otherwise follow the viewer's operating system);
+ * "inverted" is the blunt inversion Gmail and Outlook mobile apply to the
+ * light design, with images re-inverted because those clients leave them
+ * alone.
  */
 const simulateScheme = (html: string, scheme: Scheme): string => {
-    if (scheme === 'dark') {
-        return html.replace(
-            /@media \(prefers-color-scheme: dark\)/g,
-            '@media all',
-        );
-    }
+    if (scheme === 'dark') return forceColorScheme(html, 'dark');
+    const light = forceColorScheme(html, 'light');
     if (scheme === 'inverted') {
-        return html.replace(
+        return light.replace(
             '</head>',
             '<style>html{filter:invert(1) hue-rotate(180deg);background:#fff;}img,video{filter:invert(1) hue-rotate(180deg);}</style></head>',
         );
     }
-    return html;
+    return light;
 };
 
 const PreviewDialog: React.FC = () => {
