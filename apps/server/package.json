@@ -1,6 +1,6 @@
 {
   "name": "@mailwright/server",
-  "version": "0.0.1",
+  "version": "1.1.0",
   "description": "Mailwright API: NestJS + Prisma on PostgreSQL, Gemini-powered template design and chat, template gallery.",
   "author": "",
   "private": true,

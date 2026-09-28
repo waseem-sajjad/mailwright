@@ -1,6 +1,6 @@
 {
   "name": "@mailwright/shared",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Document model, factories, tree operations, HTML exporter and starter templates shared by the web editor and the API.",

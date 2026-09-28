@@ -1,6 +1,6 @@
 {
   "name": "mailwright",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Mailwright: open-source drag-and-drop email template builder with an AI designer, a template gallery and inbox-safe HTML export.",
   "type": "module",
