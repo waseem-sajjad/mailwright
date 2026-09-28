@@ -82,3 +82,28 @@ Run `exportHtml(template.build())` for each entry in `src/utils/templates.ts`
 in Node (see `email-builder-dev` for the esbuild recipe) and eyeball the output.
 If a real client test is possible, the cheapest check is pasting the HTML into
 an `.eml` and opening it in Outlook desktop and the Gmail app.
+
+## Dark mode
+
+Clients differ, and the exporter plus the pre-flight check cover both camps:
+
+- **Honours `prefers-color-scheme`** (Apple Mail, iOS Mail, Outlook.com and
+  the new Outlook apps): `exportHtml` emits `<meta name="color-scheme">`,
+  `supported-color-schemes`, `:root { color-scheme: light dark }` and a
+  designed dark block (`darkModeCss()` in `packages/shared/src/utils/export.ts`)
+  keyed on classes the renderers add: `mw-page`, `mw-row-light`,
+  `mw-cbg-light`, `mw-text-dark`, `mw-line-light`. The same rules are
+  repeated under `[data-ogsc]` / `[data-ogsb]` for Outlook.com. Brand-coloured
+  bands and buttons are left alone on purpose. New renderers that print text
+  colours must call `darkTextClass()`; new backgrounds use `lightBgClass()`.
+- **Ignores everything and inverts** (Gmail web/iOS/Android, Outlook for
+  iOS/Android, classic Outlook for Windows partially): nothing in the HTML can
+  stop it, so `checkDocument()` (`lint.ts`, `darkModeChecks`) simulates it per
+  text/background pair: contrast as designed (4.5:1 body, 3:1 headings and
+  buttons), after full inversion, after partial inversion (light backgrounds
+  darkened, dark text lightened), plus a mid-tone text warning and an advisory
+  for images on light backgrounds (transparent logos). Fix those by changing
+  colours, not CSS.
+- The Preview dialog has Light / Dark / Inverted: "Dark" forces the designed
+  block on (`@media all`), "Inverted" applies `filter: invert(1) hue-rotate(180deg)`
+  with images re-inverted, matching how those clients treat images.

@@ -29,8 +29,11 @@ import type {
 import {
     borderCss,
     escapeHtml,
+    isLightColor,
     isTransparent,
+    lighten,
     paddingCss,
+    relativeLuminance,
     rgbaToCss,
     videoThumbnail,
 } from './helper';
@@ -61,12 +64,35 @@ const bgAttr = (color: Parameters<typeof rgbaToCss>[0]): string =>
     isTransparent(color) ? '' : ` bgcolor="${rgbaToCss(color)}"`;
 
 /** CSS classes that the media query uses to hide a block per device. */
-const visibilityClass = (p: Visibility): string => {
-    const classes: string[] = [];
+const visibilityClass = (p: Visibility, ...extra: string[]): string => {
+    const classes: string[] = extra.filter(Boolean);
     if (p.hideOnMobile) classes.push('hide-mobile');
     if (p.hideOnDesktop) classes.push('hide-desktop');
     return classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
 };
+
+/*
+ * Dark-mode hooks. Clients that honour `prefers-color-scheme` (Apple Mail,
+ * iOS Mail, Outlook.com and the new Outlook apps) get a designed dark
+ * theme through these classes instead of an automatic inversion:
+ *   mw-page        the outer canvas background
+ *   mw-row-light   a row band with a light background
+ *   mw-cbg-light   a content container / column with a light background
+ *   mw-text-dark   dark text that must turn light
+ *   mw-line-light  light divider lines
+ * Gmail ignores all of it and inverts on its own; the pre-flight check
+ * simulates that case instead.
+ */
+const darkTextClass = (css: string): string => {
+    const m = css.match(/^#([0-9a-f]{6})$/i);
+    if (!m) return '';
+    const n = parseInt(m[1], 16);
+    const lum = relativeLuminance({ r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 });
+    return lum < 0.4 ? 'mw-text-dark' : '';
+};
+
+const lightBgClass = (color: Parameters<typeof rgbaToCss>[0], name: string): string =>
+    !isTransparent(color) && isLightColor(color) ? name : '';
 
 const visibilityStyle = (p: Visibility): string =>
     p.hideOnDesktop
@@ -92,8 +118,9 @@ const renderHeading = (p: HeadingProperties, ctx: Context): string => {
         `color:${resolveColor(p.inheritColor, p.color, ctx)}`,
         `text-align:${p.align}`,
     ].join(';');
+    const cls = darkTextClass(resolveColor(p.inheritColor, p.color, ctx));
     return wrap(
-        `<${p.level} style="${style};">${p.text}</${p.level}>`,
+        `<${p.level}${cls ? ` class="${cls}"` : ''} style="${style};">${p.text}</${p.level}>`,
         p.padding,
         p.align,
         p,
@@ -111,8 +138,9 @@ const renderText = (p: TextProperties, ctx: Context): string => {
         `color:${resolveColor(p.inheritColor, p.color, ctx)}`,
         `text-align:${p.align}`,
     ].join(';');
+    const cls = darkTextClass(resolveColor(p.inheritColor, p.color, ctx));
     return wrap(
-        `<div style="${style};">${p.text}</div>`,
+        `<div${cls ? ` class="${cls}"` : ''} style="${style};">${p.text}</div>`,
         p.padding,
         p.align,
         p,
@@ -121,7 +149,7 @@ const renderText = (p: TextProperties, ctx: Context): string => {
 
 const renderDivider = (p: DividerProperties): string =>
     wrap(
-        `<table ${TABLE} width="${p.width}%" align="${p.align}" style="width:${p.width}%;"><tr><td style="border-top:${p.thickness}px ${p.style} ${rgbaToCss(p.color)};font-size:0;line-height:0;">&nbsp;</td></tr></table>`,
+        `<table ${TABLE} width="${p.width}%" align="${p.align}" style="width:${p.width}%;"><tr><td${isLightColor(p.color) ? ' class="mw-line-light"' : ''} style="border-top:${p.thickness}px ${p.style} ${rgbaToCss(p.color)};font-size:0;line-height:0;">&nbsp;</td></tr></table>`,
         p.padding,
         p.align,
         p,
@@ -173,8 +201,9 @@ const renderList = (p: ListProperties, ctx: Context): string => {
     const items = p.items
         .map((item) => `<li style="margin:0 0 4px 0;">${item}</li>`)
         .join('');
+    const cls = darkTextClass(resolveColor(p.inheritColor, p.color, ctx));
     return wrap(
-        `<${tag} style="${style};">${items}</${tag}>`,
+        `<${tag}${cls ? ` class="${cls}"` : ''} style="${style};">${items}</${tag}>`,
         p.padding,
         p.align,
         p,
@@ -503,7 +532,8 @@ const renderFooter = (p: FooterProperties, ctx: Context): string => {
             : '',
         links ? `<div style="margin-top:6px;">${links}</div>` : '',
     ].join('');
-    return wrap(`<div style="${font}">${lines}</div>`, p.padding, p.align, p);
+    const cls = darkTextClass(rgbaToCss(p.color));
+    return wrap(`<div${cls ? ` class="${cls}"` : ''} style="${font}">${lines}</div>`, p.padding, p.align, p);
 };
 
 export const renderContent = (node: EmailNode, ctx: Context): string => {
@@ -555,7 +585,8 @@ const renderColumn = (
     ctx: Context,
 ): string => {
     const p = column.properties;
-    const stackClass = row.properties.stack ? ' class="stack"' : '';
+    const classes = [row.properties.stack ? 'stack' : '', lightBgClass(p.backgroundColor, 'mw-cbg-light')].filter(Boolean);
+    const stackClass = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
     const style = [
         `width:${p.width}%`,
         `padding:${paddingCss(p.padding)}`,
@@ -599,10 +630,10 @@ const renderRow = (row: RowNode, ctx: Context): string => {
         : '';
 
     return [
-        `<table ${TABLE} width="100%"${visibilityClass(p)}${bgAttr(p.backgroundColor)}${bgImage} style="${outerStyle};${visibilityStyle(p)}">`,
+        `<table ${TABLE} width="100%"${visibilityClass(p, lightBgClass(p.backgroundColor, 'mw-row-light'))}${bgAttr(p.backgroundColor)}${bgImage} style="${outerStyle};${visibilityStyle(p)}">`,
         `<tr><td align="${p.contentAlign}" style="padding:${paddingCss(p.padding)};">`,
         `<!--[if mso]><table ${TABLE} width="${w}" align="${p.contentAlign}"><tr><td><![endif]-->`,
-        `<table ${TABLE} width="100%"${bgAttr(p.contentBackgroundColor)} class="container" style="${innerStyle};"><tr>`,
+        `<table ${TABLE} width="100%"${bgAttr(p.contentBackgroundColor)} class="container${isTransparent(p.contentBackgroundColor) || !isLightColor(p.contentBackgroundColor) ? '' : ' mw-cbg-light'}" style="${innerStyle};"><tr>`,
         columns,
         '</tr></table>',
         '<!--[if mso]></td></tr></table><![endif]-->',
@@ -632,6 +663,27 @@ const minifyHtml = (html: string): string =>
         .replace(/<!--(?!\[if)(?!<!)[\s\S]*?-->/g, '')
         .replace(/\n\s*/g, '')
         .replace(/>\s{2,}</g, '> <');
+
+/** Designed dark theme for clients that honour prefers-color-scheme, plus Outlook.com's data-ogsc/data-ogsb hooks. */
+const darkModeCss = (canvas: CanvasProperties): string => {
+    const link = rgbaToCss(lighten(canvas.linkColor, 0.35));
+    const rules = [
+        'body, .mw-page { background-color: #0b0d12 !important; }',
+        '.mw-row-light { background-color: #12151c !important; }',
+        '.mw-cbg-light { background-color: #1a1e27 !important; }',
+        '.mw-text-dark, .mw-text-dark * { color: #e6e8ee !important; }',
+        `.mw-text-dark a { color: ${link} !important; }`,
+        '.mw-line-light { border-top-color: #3a3f4b !important; }',
+    ];
+    return [
+        '@media (prefers-color-scheme: dark) {',
+        ...rules.map((r) => `  ${r}`),
+        '}',
+        // Outlook.com and the new Outlook apps expose dark mode through these attributes.
+        ...rules.map((r) => `[data-ogsc] ${r}`),
+        ...rules.map((r) => `[data-ogsb] ${r}`),
+    ].join('\n');
+};
 
 /** Renders the whole document as email-client-friendly HTML. */
 export const exportHtml = (
@@ -667,10 +719,13 @@ export const exportHtml = (
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="x-apple-disable-message-reformatting" />
+<meta name="color-scheme" content="light dark" />
+<meta name="supported-color-schemes" content="light dark" />
 <title>${escapeHtml(canvas.title)}</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 ${fontLinks}
 <style>
+:root { color-scheme: light dark; supported-color-schemes: light dark; }
 html, body { margin: 0 !important; padding: 0 !important; height: 100% !important; width: 100% !important; }
 * { -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
 table, td { mso-table-lspace: 0pt !important; mso-table-rspace: 0pt !important; border-collapse: collapse !important; }
@@ -685,11 +740,12 @@ a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !im
   .hide-desktop { display: table !important; max-height: none !important; overflow: visible !important; }
   div.hide-desktop { display: block !important; }
 }
+${darkModeCss(canvas)}
 </style>
 </head>
 <body style="margin:0;padding:0;background-color:${bg};font-family:${canvas.fontFamily};color:${rgbaToCss(canvas.color)};">
 ${preheader}
-<table ${TABLE} width="100%" bgcolor="${bg}" style="background-color:${bg};">
+<table ${TABLE} width="100%" bgcolor="${bg}" class="mw-page" style="background-color:${bg};">
 <tr><td>
 ${rows}
 </td></tr>

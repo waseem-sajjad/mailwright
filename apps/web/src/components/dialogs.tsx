@@ -57,6 +57,31 @@ const Segmented = <T extends string>({
     </div>
 );
 
+type Scheme = 'light' | 'dark' | 'inverted';
+
+/**
+ * Rewrites the export so the sandboxed iframe shows what a dark-mode inbox
+ * would: "dark" forces the designed prefers-color-scheme block on (what
+ * Apple Mail and Outlook.com do), "inverted" applies the blunt colour
+ * inversion Gmail and Outlook mobile perform (images are re-inverted, as
+ * those clients leave them alone).
+ */
+const simulateScheme = (html: string, scheme: Scheme): string => {
+    if (scheme === 'dark') {
+        return html.replace(
+            /@media \(prefers-color-scheme: dark\)/g,
+            '@media all',
+        );
+    }
+    if (scheme === 'inverted') {
+        return html.replace(
+            '</head>',
+            '<style>html{filter:invert(1) hue-rotate(180deg);background:#fff;}img,video{filter:invert(1) hue-rotate(180deg);}</style></head>',
+        );
+    }
+    return html;
+};
+
 const PreviewDialog: React.FC = () => {
     const { dialog, setDialog, view, previewHtml, setPreviewHtml } =
         useSettings();
@@ -65,6 +90,7 @@ const PreviewDialog: React.FC = () => {
     const html = previewHtml ?? editorHtml;
     const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
     const [sample, setSample] = useState(true);
+    const [scheme, setScheme] = useState<Scheme>('light');
 
     // Open in the device the editor is currently showing.
     useEffect(() => {
@@ -72,7 +98,10 @@ const PreviewDialog: React.FC = () => {
             setDevice(view === 'mobile' ? 'mobile' : 'desktop');
         }
     }, [dialog, view]);
-    const rendered = sample ? applyMergeTags(html, mergeTags) : html;
+    const rendered = simulateScheme(
+        sample ? applyMergeTags(html, mergeTags) : html,
+        scheme,
+    );
 
     return (
         <Modal
@@ -82,6 +111,27 @@ const PreviewDialog: React.FC = () => {
                         Sample data
                         <CheckBox onChange={setSample} checked={sample} />
                     </div>
+                    <Segmented
+                        options={[
+                            {
+                                value: 'light',
+                                label: 'Light',
+                                title: 'As designed',
+                            },
+                            {
+                                value: 'dark',
+                                label: 'Dark',
+                                title: 'Designed dark theme (Apple Mail, iOS Mail, Outlook.com)',
+                            },
+                            {
+                                value: 'inverted',
+                                label: 'Inverted',
+                                title: 'Automatic inversion (Gmail apps, Outlook for iOS/Android)',
+                            },
+                        ]}
+                        onChange={setScheme}
+                        value={scheme}
+                    />
                     <Segmented
                         options={[
                             {

@@ -80,3 +80,39 @@ export const debounce = <T extends (...args: any[]) => void>(
         timer = setTimeout(() => fn(...args), wait);
     };
 };
+
+/* ---------- colour maths (WCAG) ---------- */
+
+const channel = (value: number): number => {
+    const c = Math.max(0, Math.min(255, value)) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+
+/** WCAG relative luminance, 0 (black) to 1 (white). */
+export const relativeLuminance = (color: RGBColor): number =>
+    0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+
+/** WCAG contrast ratio between two colours, 1 to 21. */
+export const contrastRatio = (a: RGBColor, b: RGBColor): number => {
+    const la = relativeLuminance(a);
+    const lb = relativeLuminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+};
+
+export const isLightColor = (color: RGBColor): boolean => relativeLuminance(color) > 0.5;
+
+/** The colour a "full inversion" dark mode (Gmail, Outlook mobile) produces. */
+export const invertColor = (color: RGBColor): RGBColor => ({
+    r: 255 - color.r,
+    g: 255 - color.g,
+    b: 255 - color.b,
+    a: color.a,
+});
+
+/** Mixes a colour towards white; `amount` 0..1. Used for dark-mode link colours. */
+export const lighten = (color: RGBColor, amount: number): RGBColor => ({
+    r: Math.round(color.r + (255 - color.r) * amount),
+    g: Math.round(color.g + (255 - color.g) * amount),
+    b: Math.round(color.b + (255 - color.b) * amount),
+    a: color.a,
+});

@@ -40,9 +40,11 @@ emails without writing table-based HTML by hand:
   large-format designs across e-commerce, SaaS, hospitality, finance, travel,
   non-profit, events and education. Open one, edit it, export it.
 - **Inbox-safe export.** Table-based HTML with Outlook conditionals, Google
-  Fonts fallbacks, a pre-flight checker for common deliverability mistakes,
-  optional minification, preview on desktop, tablet and phone widths, and JSON
-  import/export of the document.
+  Fonts fallbacks, a designed dark theme for clients that honour
+  `prefers-color-scheme`, a pre-flight checker for deliverability mistakes and
+  dark-mode contrast (it simulates Gmail's and Outlook's colour inversion),
+  optional minification, preview in light, dark and inverted modes on desktop
+  and phone widths, and JSON import/export of the document.
 - **Built for a public deployment.** One private AI conversation per browser,
   no vendor or model names exposed, per-IP rate limiting on AI routes, a
   read-only gallery, and optional Google AdSense placements.
@@ -146,6 +148,13 @@ bulletproof buttons, responsive columns and hide-on-mobile/desktop classes.
 The pre-flight check flags missing alt text, placeholder links, missing
 unsubscribe links and other deliverability problems before you copy or
 download.
+
+Dark mode is handled both ways: clients that honour `prefers-color-scheme`
+(Apple Mail, iOS Mail, Outlook.com) get a designed dark theme that keeps brand
+bands and buttons intact, and for clients that simply invert colours (Gmail,
+Outlook for iOS and Android) the pre-flight check simulates full and partial
+inversion per block and warns where text would lose contrast. The preview
+dialog shows all three renderings.
 
 ## Configuration
 

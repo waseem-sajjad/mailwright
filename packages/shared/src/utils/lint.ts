@@ -1,5 +1,6 @@
-import type { CanvasNode, EmailNode } from '../types';
+import type { CanvasNode, EmailNode, RGBColor } from '../types';
 
+import { contrastRatio, invertColor, isLightColor, isTransparent, relativeLuminance } from './helper';
 import { MERGE_TAG_RE } from './mergeTags';
 
 export type IssueLevel = 'error' | 'warning';
@@ -208,6 +209,8 @@ export const checkDocument = (root: CanvasNode): Issue[] => {
         }
     });
 
+    issues.push(...darkModeChecks(root));
+
     for (const match of text.matchAll(MERGE_TAG_RE)) {
         if (!knownTags.has(match[1])) {
             push(
@@ -227,4 +230,96 @@ export const checkDocument = (root: CanvasNode): Issue[] => {
         if (a.level === b.level) return 0;
         return a.level === 'error' ? -1 : 1;
     });
+};
+
+/* ---------- dark mode ---------- */
+
+const ratio = (n: number): string => `${n.toFixed(1)}:1`;
+
+/**
+ * Simulates what dark-mode clients do to each text/background pair.
+ * - as designed: WCAG contrast below 4.5
+ * - full inversion (Gmail apps, Outlook iOS/Android): both colours inverted
+ * - partial inversion (Gmail iOS, classic Outlook for Windows): light
+ *   backgrounds are darkened, dark text lightened, everything else kept
+ * Gmail ignores prefers-color-scheme, so the designed dark theme the
+ * exporter ships cannot rescue these cases; the colours themselves must.
+ */
+const darkModeChecks = (root: CanvasNode): Issue[] => {
+    const issues: Issue[] = [];
+    const canvas = root.properties;
+    const pageBg = isTransparent(canvas.backgroundColor) ? { r: 255, g: 255, b: 255, a: 1 } : canvas.backgroundColor;
+    const solid = (color: RGBColor | undefined, fallback: RGBColor): RGBColor =>
+        color && !isTransparent(color) ? color : fallback;
+    const partial = (color: RGBColor, background: boolean): RGBColor => {
+        const lum = relativeLuminance(color);
+        if (background) return lum > 0.5 ? invertColor(color) : color;
+        return lum < 0.5 ? invertColor(color) : color;
+    };
+    const unhostedImages: string[] = [];
+
+    // WCAG AA: 4.5:1 for body text, 3:1 for large text (headings, button labels).
+    const checkPair = (node: EmailNode, label: string, fg: RGBColor, bg: RGBColor, large = false) => {
+        const normal = contrastRatio(fg, bg);
+        if (normal < (large ? 3 : 4.5)) {
+            issues.push({ level: 'warning', message: `${label}: low contrast (${ratio(normal)}) as designed.`, nodeId: node.id });
+            return;
+        }
+        const full = contrastRatio(invertColor(fg), invertColor(bg));
+        if (full < 3) {
+            issues.push({
+                level: 'warning',
+                message: `${label}: drops to ${ratio(full)} when Gmail or Outlook mobile invert every colour.`,
+                nodeId: node.id,
+            });
+            return;
+        }
+        const part = contrastRatio(partial(fg, false), partial(bg, true));
+        if (part < 3) {
+            issues.push({
+                level: 'warning',
+                message: `${label}: drops to ${ratio(part)} when Gmail iOS or classic Outlook invert only light backgrounds.`,
+                nodeId: node.id,
+            });
+            return;
+        }
+        const lum = relativeLuminance(fg);
+        if (lum > 0.15 && lum < 0.45) {
+            issues.push({
+                level: 'warning',
+                message: `${label}: mid-tone text colour reads poorly in dark mode; use darker or lighter text.`,
+                nodeId: node.id,
+            });
+        }
+    };
+
+    const visit = (node: EmailNode, bg: RGBColor) => {
+        const p = node.properties;
+        let next = bg;
+        if (node.type === 'Row') {
+            next = solid(p.contentBackgroundColor, solid(p.backgroundColor, bg));
+        } else if (node.type === 'Column') {
+            next = solid(p.backgroundColor, bg);
+        } else if (node.type === 'Heading' || node.type === 'Text' || node.type === 'List') {
+            const fg: RGBColor = p.inheritColor ? canvas.color : p.color;
+            checkPair(node, node.type, fg, bg, node.type === 'Heading');
+        } else if (node.type === 'Button') {
+            checkPair(node, `Button "${p.text}"`, p.color, solid(p.backgroundColor, bg), true);
+        } else if (node.type === 'Footer') {
+            checkPair(node, 'Footer text', p.color, bg);
+        } else if (node.type === 'Image' && isLightColor(bg) && p.src && !String(p.src).includes('placehold.co')) {
+            unhostedImages.push(node.id);
+        }
+        node.children.forEach((child) => visit(child, next));
+    };
+    visit(root, solid(canvas.contentBackgroundColor, pageBg));
+
+    if (unhostedImages.length > 0) {
+        issues.push({
+            level: 'warning',
+            message: `${unhostedImages.length} image${unhostedImages.length === 1 ? ' sits' : 's sit'} on a light background: transparent logos with dark artwork vanish when dark mode inverts the background. Give them a solid background or a light-safe version.`,
+            nodeId: unhostedImages[0],
+        });
+    }
+    return issues;
 };
